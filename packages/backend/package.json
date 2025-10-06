@@ -1,15 +1,9 @@
 {
-  "name": "@renegade/convex",
+  "name": "renegade-race-backend",
   "version": "1.0.0",
-  "description": "Shared packages for Renegade Race Track Rental Platform",
+  "description": "Backend for Renegade Race Track Rental Platform",
   "private": true,
-  "packageManager": "pnpm@10.18.0",
   "scripts": {
-    "dev": "pnpm --recursive dev",
-    "build": "pnpm --recursive build",
-    "lint": "pnpm --recursive lint",
-    "type-check": "pnpm --recursive type-check",
-    "clean": "pnpm --recursive clean",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:init": "convex init",
@@ -29,6 +23,5 @@
     "renegade",
     "convex"
   ],
-  "author": "Renegade Team",
-  "license": "ISC"
+  "author": "Renegade Team"
 }

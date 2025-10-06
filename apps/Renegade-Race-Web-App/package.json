@@ -17,7 +17,6 @@
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@renegade/convex": "file:../../packages/convex-shared",
     "@stripe/react-stripe-js": "^5.0.0",
     "@stripe/stripe-js": "^8.0.0",
     "class-variance-authority": "^0.7.1",
