@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 16.14.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "ios": {
+        "simulator": true
+      },
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "channel": "preview"
+    },
+    "preview-external": {
+      "distribution": "store",
+      "environment": "preview",
+      "channel": "preview-external",
+      "autoIncrement": true
+    },
+    "production": {
+      "ios": {
+        "image": "macos-sonoma-14.6-xcode-16.1"
+      },
+      "autoIncrement": true,
+      "environment": "production",
+      "channel": "production",
+      "env": {
+        "EAS_BUILD_GIT_BRANCH": "main"
+      }
+    }
+  }
+}

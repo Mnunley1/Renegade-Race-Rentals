@@ -1,0 +1,439 @@
+# Cursor Rules for Renegade Race App
+
+# React Native/Expo + Convex Backend Project
+
+## Project Overview
+
+This is a React Native/Expo application for race track vehicle rentals with a Convex backend. The app includes driver-team matching, vehicle rentals, messaging, and user management features.
+
+## Tech Stack
+
+- **Frontend**: React Native 0.79.5, Expo SDK 53, TypeScript
+- **Backend**: Convex (real-time database and functions)
+- **Authentication**: Clerk
+- **State Management**: Zustand
+- **Forms**: React Hook Form + Zod validation
+- **UI**: Native components + Lucide React Native icons
+- **Navigation**: Expo Router (file-based routing)
+
+## Code Style & Standards
+
+### TypeScript
+
+- Use strict TypeScript with proper type annotations
+- Prefer interfaces over types for object shapes
+- Use generic types when appropriate
+- Always define return types for functions
+- Use proper type guards and null checks
+
+### React Native/Expo
+
+- Follow React Native best practices and performance guidelines
+- Use functional components with hooks
+- Implement proper error boundaries
+- Use React.memo() for expensive components
+- Follow Expo's recommended patterns and APIs
+
+### File Organization
+
+- Use file-based routing with Expo Router
+- Group related components in feature folders
+- Keep components small and focused
+- Use index files for clean imports
+- Follow the existing app/(tabs) structure
+
+## Convex Backend Rules
+
+### Schema Design
+
+- Define clear table schemas in `convex/schema.ts`
+- Use proper field types and constraints
+- Include indexes for frequently queried fields
+- Use proper relationships between tables
+
+### Query Functions
+
+- Write efficient queries with proper indexing
+- Use pagination for large datasets
+- Implement proper error handling
+- Use Convex's real-time capabilities appropriately
+
+### Mutation Functions
+
+- Validate input data thoroughly
+- Implement proper authorization checks
+- Use transactions for multi-step operations
+- Return meaningful error messages
+
+## Component Guidelines
+
+### Naming Conventions
+
+- Use PascalCase for components: `CarCard.tsx`
+- Use camelCase for functions and variables
+- Use kebab-case for file names in routes: `car-detail.tsx`
+- Use descriptive names that explain purpose
+
+### Component Structure
+
+```typescript
+// Preferred component structure
+import React from 'react';
+import { View, Text } from 'react-native';
+import { useQuery } from 'convex/react';
+
+interface ComponentProps {
+  // Define props interface
+}
+
+export default function ComponentName({ prop1, prop2 }: ComponentProps) {
+  // Hooks first
+  const data = useQuery('queryName');
+
+  // Event handlers
+  const handlePress = () => {
+    // Implementation
+  };
+
+  // Render
+  return (
+    <View>
+      <Text>Content</Text>
+    </View>
+  );
+}
+```
+
+### State Management
+
+- Use Zustand for global state
+- Use React state for local component state
+- Use Convex queries for server state
+- Avoid prop drilling - use context or state management
+
+## Authentication & Security
+
+### Clerk Integration
+
+- Use Clerk for all authentication flows
+- Implement proper route protection
+- Handle authentication states properly
+- Use secure storage for sensitive data
+
+### Authorization
+
+- Always check user permissions in Convex functions
+- Validate user ownership of resources
+- Implement proper role-based access control
+
+## Form Handling
+
+### React Hook Form + Zod
+
+- Use Zod schemas for validation
+- Implement proper error handling
+- Use controlled components
+- Provide clear error messages
+
+### Form Structure
+
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const formSchema = z.object({
+  // Define schema
+});
+
+export default function FormComponent() {
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      // Default values
+    },
+  });
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    // Handle submission
+  };
+}
+```
+
+## Performance Guidelines
+
+### React Native Performance
+
+- Use FlatList for long lists
+- Implement proper image optimization
+- Use lazy loading where appropriate
+- Minimize re-renders with proper memoization
+
+### Convex Performance
+
+- Use proper indexes for queries
+- Implement pagination for large datasets
+- Use optimistic updates for better UX
+- Cache frequently accessed data
+
+## Error Handling
+
+### Frontend Errors
+
+- Implement proper error boundaries
+- Show user-friendly error messages
+- Log errors for debugging
+- Handle network errors gracefully
+
+### Backend Errors
+
+- Return meaningful error messages
+- Implement proper error codes
+- Log errors for monitoring
+- Handle edge cases properly
+
+## Testing Guidelines
+
+### Component Testing
+
+- Test component rendering
+- Test user interactions
+- Test error states
+- Test loading states
+
+### Function Testing
+
+- Test Convex functions thoroughly
+- Test edge cases and error conditions
+- Test authorization logic
+- Test data validation
+
+## Code Quality
+
+### Linting & Formatting
+
+- Follow Prettier configuration
+- Use consistent indentation (2 spaces)
+- Use single quotes for strings
+- Remove unused imports
+
+### Documentation
+
+- Add JSDoc comments for complex functions
+- Document component props
+- Add inline comments for complex logic
+- Keep README files updated
+
+## Specific Project Rules
+
+### Vehicle Rental Features
+
+- Implement proper availability checking
+- Handle booking conflicts
+- Implement cancellation policies
+- Track rental history
+
+### Driver-Team Matching
+
+- Implement proper matching algorithms
+- Handle team applications
+- Manage driver profiles
+- Track team relationships
+
+### Messaging System
+
+- Implement real-time messaging
+- Handle message delivery status
+- Implement proper notifications
+- Manage conversation threads
+
+### User Management
+
+- Implement proper user profiles
+- Handle user roles and permissions
+- Manage user preferences
+- Implement proper data privacy
+
+## Common Patterns
+
+### Custom Hooks
+
+- Create reusable hooks for common functionality
+- Use proper hook naming conventions
+- Implement proper error handling in hooks
+- Return consistent data structures
+
+### Utility Functions
+
+- Create utility functions for common operations
+- Use proper TypeScript types
+- Implement proper error handling
+- Keep functions pure when possible
+
+## Git & Collaboration
+
+### Commit Messages
+
+- Use conventional commit format
+- Write descriptive commit messages
+- Reference issues when applicable
+- Keep commits focused and atomic
+
+### Code Review
+
+- Review for security issues
+- Check for performance implications
+- Ensure proper error handling
+- Verify TypeScript types
+
+## Environment & Configuration
+
+### Environment Variables
+
+- Use proper environment configuration
+- Keep sensitive data secure
+- Use different configs for dev/prod
+- Document required environment variables
+
+### Build Configuration
+
+- Follow Expo build best practices
+- Configure proper app icons and splash screens
+- Set up proper app permissions
+- Configure proper deep linking
+
+## Accessibility
+
+### React Native Accessibility
+
+- Use proper accessibility labels
+- Implement proper focus management
+- Support screen readers
+- Test with accessibility tools
+
+## Security Best Practices
+
+### Data Protection
+
+- Validate all user inputs
+- Sanitize data before storage
+- Implement proper authentication
+- Use secure communication protocols
+
+### Privacy
+
+- Follow data privacy regulations
+- Implement proper data retention
+- Handle user data deletion
+- Document privacy practices
+
+## Monitoring & Analytics
+
+### Error Tracking
+
+- Implement proper error logging
+- Track user interactions
+- Monitor performance metrics
+- Set up alerts for critical issues
+
+## Deployment
+
+### Expo Deployment
+
+- Use EAS Build for production builds
+- Configure proper app signing
+- Set up proper app store deployment
+- Implement proper update mechanisms
+
+### Convex Deployment
+
+- Deploy to production environment
+- Set up proper monitoring
+- Configure proper backups
+- Implement proper scaling
+
+## Code Examples
+
+### Proper Component Example
+
+```typescript
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+
+interface CarCardProps {
+  carId: string;
+  onPress: (carId: string) => void;
+}
+
+export default function CarCard({ carId, onPress }: CarCardProps) {
+  const car = useQuery(api.vehicles.get, { id: carId });
+
+  if (!car) {
+    return <View><Text>Loading...</Text></View>;
+  }
+
+  return (
+    <TouchableOpacity onPress={() => onPress(carId)}>
+      <View>
+        <Text>{car.name}</Text>
+        <Text>{car.description}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+```
+
+### Proper Convex Function Example
+
+```typescript
+import { mutation } from './_generated/server';
+import { v } from 'convex/values';
+
+export const createReservation = mutation({
+  args: {
+    vehicleId: v.id('vehicles'),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Not authenticated');
+    }
+
+    // Validate input
+    if (new Date(args.startDate) >= new Date(args.endDate)) {
+      throw new Error('Invalid date range');
+    }
+
+    // Check availability
+    const existingReservation = await ctx.db
+      .query('reservations')
+      .filter((q) => q.eq(q.field('vehicleId'), args.vehicleId))
+      .filter((q) =>
+        q.and(
+          q.lt(q.field('startDate'), args.endDate),
+          q.gt(q.field('endDate'), args.startDate),
+        ),
+      )
+      .first();
+
+    if (existingReservation) {
+      throw new Error('Vehicle not available for selected dates');
+    }
+
+    // Create reservation
+    return await ctx.db.insert('reservations', {
+      vehicleId: args.vehicleId,
+      userId: identity.subject,
+      startDate: args.startDate,
+      endDate: args.endDate,
+      status: 'confirmed',
+    });
+  },
+});
+```
+
+Remember to always prioritize user experience, security, and performance in your implementations. Follow these rules to maintain code quality and consistency across the project.

@@ -1,0 +1,143 @@
+# Renegade Rentals Admin App - Cursor Rules
+
+You are working on the **Renegade Rentals Admin App** - the administrative interface for managing the race track vehicle rental platform.
+
+## Project Overview
+
+This is a React/Vite admin application for managing:
+- Vehicle listings and approvals
+- User management and profiles
+- Reservation oversight
+- Track management
+- Team and driver applications
+- Dispute resolution
+- Analytics and reporting
+
+## Tech Stack
+
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS + Radix UI + Class Variance Authority
+- **Backend**: Convex (shared with other apps)
+- **Authentication**: Clerk
+- **State Management**: Zustand + React Hook Form
+- **Icons**: Lucide React
+
+## Admin-Specific Guidelines
+
+### Data Management
+
+- **Read-heavy operations**: Admin needs comprehensive data views
+- **Bulk operations**: Support for batch actions on multiple items
+- **Real-time updates**: Use Convex subscriptions for live data
+- **Data validation**: Strict validation for admin actions
+- **Audit trails**: Track all admin actions and changes
+
+### UI Patterns
+
+- **Data tables**: Use `@tanstack/react-table` for complex data grids
+- **Filters and search**: Comprehensive filtering capabilities
+- **Modal workflows**: Multi-step processes in modals
+- **Dashboard views**: Overview cards and charts
+- **Bulk actions**: Select multiple items for batch operations
+
+### Admin Permissions
+
+- **Role-based access**: Different admin levels (super admin, moderator)
+- **Action logging**: Track all admin actions
+- **Confirmation dialogs**: Require confirmation for destructive actions
+- **Audit trails**: Maintain logs of all changes
+
+### Component Structure
+
+```typescript
+// Admin page component pattern
+interface AdminPageProps {
+  // Admin-specific props
+}
+
+export default function AdminPage({ ...props }: AdminPageProps) {
+  // Data fetching with admin permissions
+  const data = useQuery(api.admin.getData);
+  
+  // Admin actions
+  const handleBulkAction = useMutation(api.admin.bulkAction);
+  
+  return (
+    <div className="admin-page">
+      {/* Admin-specific UI */}
+    </div>
+  );
+}
+```
+
+### Database Operations
+
+- **Admin queries**: Use admin-specific Convex functions
+- **Bulk operations**: Efficient batch processing
+- **Data exports**: Support for CSV/Excel exports
+- **Real-time updates**: Live data synchronization
+
+### Security Considerations
+
+- **Admin authentication**: Strict admin role verification
+- **Action authorization**: Verify permissions for each action
+- **Data sanitization**: Clean data before display
+- **Audit logging**: Track all admin activities
+
+### Performance
+
+- **Pagination**: Handle large datasets efficiently
+- **Virtual scrolling**: For very large lists
+- **Optimistic updates**: Immediate UI feedback
+- **Caching**: Cache frequently accessed admin data
+
+### Error Handling
+
+- **Admin-friendly errors**: Clear error messages for admins
+- **Fallback UI**: Graceful degradation
+- **Retry mechanisms**: Allow retry for failed operations
+- **Error reporting**: Log errors for debugging
+
+## Integration with Shared Convex
+
+- **Import pattern**: `import { api } from '@renegade/convex/_generated/api'`
+- **Admin functions**: Use admin-specific Convex functions
+- **Schema awareness**: Understand shared database schema
+- **Real-time updates**: Leverage Convex subscriptions
+
+## Admin Workflows
+
+### Vehicle Management
+- Approve/reject vehicle listings
+- Edit vehicle details
+- Manage vehicle images
+- Handle availability conflicts
+
+### User Management
+- View user profiles
+- Manage user roles
+- Handle user disputes
+- Track user activity
+
+### Reservation Oversight
+- Monitor all reservations
+- Handle cancellations
+- Manage payment issues
+- Track completion status
+
+### Team Management
+- Review team applications
+- Manage driver profiles
+- Handle team disputes
+- Track team performance
+
+## Best Practices
+
+1. **Always verify admin permissions** before actions
+2. **Provide clear feedback** for all admin actions
+3. **Use consistent UI patterns** across admin pages
+4. **Implement proper error handling** for all operations
+5. **Maintain audit trails** for all changes
+6. **Optimize for large datasets** with pagination
+7. **Use real-time updates** for live data
+8. **Follow accessibility guidelines** for admin interfaces
