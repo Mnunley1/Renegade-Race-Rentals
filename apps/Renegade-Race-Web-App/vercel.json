@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "cd ../.. && pnpm install && pnpm turbo run build --filter=renegade-race-rentals",
+  "installCommand": "echo 'Skipping install - handled in buildCommand'",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
