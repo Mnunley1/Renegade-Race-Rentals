@@ -4,19 +4,26 @@ import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'replace-convex-server',
+      resolveId(id) {
+        if (id === 'convex/server') {
+          return id;
+        }
+      },
+      load(id) {
+        if (id === 'convex/server') {
+          return 'export {};';
+        }
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  },
-  build: {
-    rollupOptions: {
-      external: ['convex/server'],
-    },
-  },
-  define: {
-    'convex/server': '{}',
   },
   optimizeDeps: {
     include: ['convex/react'],
