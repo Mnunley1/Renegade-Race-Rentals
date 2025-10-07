@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "outputDirectory": "dist",
+  "buildCommand": "turbo run build --filter=renegade-race-rentals",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/Renegade-Race-Web-App/dist",
   "framework": "vite",
   "rewrites": [
     {

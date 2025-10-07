@@ -5,22 +5,22 @@
   "private": true,
   "packageManager": "pnpm@10.18.0",
   "scripts": {
-    "dev": "pnpm --parallel --recursive dev",
-    "build": "pnpm --recursive build",
-    "lint": "pnpm --recursive lint",
-    "lint:fix": "pnpm --recursive lint:fix",
-    "type-check": "pnpm --recursive type-check",
-    "clean": "pnpm --recursive clean",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
     "install:all": "pnpm install",
-    "convex:dev": "cd packages/convex-shared && pnpm convex dev",
-    "convex:deploy": "cd packages/convex-shared && pnpm convex deploy",
+    "convex:dev": "cd packages/backend && pnpm convex:dev",
+    "convex:deploy": "cd packages/backend && pnpm convex:deploy",
     "seed:motorsports": "node seed-motorsports.js",
-    "mobile:dev": "cd \"apps/Renegade Race App\" && pnpm dev",
-    "web:dev": "cd apps/Renegade-Race-Web-App && pnpm dev",
-    "admin:dev": "cd apps/Renegade-Rentals-Admin-App && pnpm dev",
-    "mobile:build": "cd \"apps/Renegade Race App\" && pnpm build:web",
-    "web:build": "cd apps/Renegade-Race-Web-App && pnpm build",
-    "admin:build": "cd apps/Renegade-Rentals-Admin-App && pnpm build"
+    "mobile:dev": "turbo run dev --filter=renegade-race-app",
+    "web:dev": "turbo run dev --filter=renegade-race-rentals",
+    "admin:dev": "turbo run dev --filter=renegade-rentals-admin",
+    "mobile:build": "turbo run build --filter=renegade-race-app",
+    "web:build": "turbo run build --filter=renegade-race-rentals",
+    "admin:build": "turbo run build --filter=renegade-rentals-admin"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.15.0",
@@ -29,16 +29,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
     "prettier": "^3.3.0",
+    "turbo": "^2.5.8",
     "typescript": "^5.6.2"
-  },
-  "keywords": [
-    "monorepo",
-    "react-native",
-    "react",
-    "convex",
-    "race-track",
-    "rentals"
-  ],
-  "author": "Renegade Team",
-  "license": "ISC"
+  }
 }

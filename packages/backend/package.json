@@ -1,14 +1,12 @@
 {
   "name": "renegade-race-backend",
-  "version": "1.0.0",
-  "description": "Backend for Renegade Race Track Rental Platform",
   "private": true,
   "scripts": {
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
-    "convex:init": "convex init",
-    "convex:status": "convex status",
-    "convex:logs": "convex logs"
+    "build": "echo 'Backend build complete'",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf convex/_generated"
   },
   "dependencies": {
     "convex": "^1.27.0",
