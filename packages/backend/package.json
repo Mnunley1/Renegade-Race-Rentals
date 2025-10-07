@@ -5,6 +5,8 @@
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "build": "echo 'Backend build complete'",
+    "lint": "echo 'No linting configured for backend'",
+    "lint:fix": "echo 'No linting configured for backend'",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf convex/_generated"
   },
