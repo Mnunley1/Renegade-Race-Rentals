@@ -8,11 +8,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@renegade/convex': path.resolve(
-        __dirname,
-        '../../packages/convex-shared/convex'
-      ),
     },
+  },
+  build: {
+    rollupOptions: {
+      external: ['convex/server'],
+    },
+  },
+  define: {
+    'convex/server': '{}',
   },
   optimizeDeps: {
     include: ['convex/react'],
