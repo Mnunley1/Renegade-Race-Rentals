@@ -11,8 +11,8 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useReservations } from '@/hooks/useReservations';
 import { formatCurrency } from '@/lib/utils';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
-import { Id } from '@renegade/convex/_generated/dataModel';
+import { api } from '@/lib/convex';
+import { Id } from '@/lib/convex';
 import { useMutation, useQuery } from 'convex/react';
 import {
   AlertCircle,

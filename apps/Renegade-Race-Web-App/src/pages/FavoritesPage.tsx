@@ -5,7 +5,7 @@ import { LoginPromptModal } from '@/components/ui/login-prompt-modal';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
+import { api } from '@/lib/convex';
 import { useQuery } from 'convex/react';
 import {
   ArrowLeft,

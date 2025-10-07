@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePayments } from '@/hooks/usePayments';
 import { formatCurrency } from '@/lib/utils';
-import { Id } from '@renegade/convex/_generated/dataModel';
+import { Id } from '@/lib/convex';
 import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { CreditCard, Shield, X } from 'lucide-react';
 import { useState } from 'react';

@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
+import { api } from '@/lib/convex';
 import { useQuery } from 'convex/react';
 import {
   ArrowLeft,

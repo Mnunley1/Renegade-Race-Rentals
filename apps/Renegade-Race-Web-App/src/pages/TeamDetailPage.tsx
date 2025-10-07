@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useTeamApplications } from '@/hooks/useTeamApplications';
-import { api } from '@renegade/convex/_generated/api';
+import { api } from '@/lib/convex';
 import { useQuery } from 'convex/react';
 import {
   ArrowLeft,

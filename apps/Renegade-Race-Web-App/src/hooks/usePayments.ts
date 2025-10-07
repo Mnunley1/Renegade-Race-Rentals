@@ -1,5 +1,5 @@
-import { api } from '@renegade/convex/_generated/api';
-import { Id } from '@renegade/convex/_generated/dataModel';
+import { api } from '@/lib/convex';
+import { Id } from '@/lib/convex';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { useUser } from '@clerk/clerk-react';
 

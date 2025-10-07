@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
-import { Id } from '@renegade/convex/_generated/dataModel';
+import { api } from '@/lib/convex';
+import { Id } from '@/lib/convex';
 import { useMutation, useQuery } from 'convex/react';
 import {
   Archive,

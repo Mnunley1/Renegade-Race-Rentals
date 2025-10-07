@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { api } from '@/lib/convex';
 import { formatCurrency } from '@/lib/utils';
-import { api } from '@renegade/convex/_generated/api';
 import { useMutation, useQuery } from 'convex/react';
 import {
   ArrowLeft,

@@ -1,7 +1,7 @@
 import { useToast } from '@/components/ui/toast';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
-import { Id } from '@renegade/convex/_generated/dataModel';
+import { api } from '@/lib/convex';
+import { Id } from '@/lib/convex';
 import { useMutation } from 'convex/react';
 import { useCallback, useState } from 'react';
 

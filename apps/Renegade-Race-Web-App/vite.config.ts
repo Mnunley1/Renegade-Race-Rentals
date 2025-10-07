@@ -14,9 +14,12 @@ export default defineConfig({
       ),
     },
   },
-  build: {
-    rollupOptions: {
-      external: ['convex/server'],
+  optimizeDeps: {
+    include: ['convex/react'],
+  },
+  server: {
+    fs: {
+      allow: ['../..'], // allow workspace packages
     },
   },
 });

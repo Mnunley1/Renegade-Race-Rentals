@@ -6,7 +6,7 @@ import { ToastContainer, useToast } from '@/components/ui/toast';
 import { useReservations } from '@/hooks/useReservations';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useUser } from '@clerk/clerk-react';
-import { api } from '@renegade/convex/_generated/api';
+import { api } from '@/lib/convex';
 import { useQuery } from 'convex/react';
 import {
   Calendar,
