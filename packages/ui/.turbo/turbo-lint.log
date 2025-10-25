@@ -1,0 +1,19 @@
+
+> @renegade/ui@0.0.0 lint /Users/malcolmnunley/Renegade App/packages/ui
+> eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 10
+
+
+/Users/malcolmnunley/Renegade App/packages/ui/src/components/badge.tsx
+  32:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/malcolmnunley/Renegade App/packages/ui/src/components/button.tsx
+  53:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/malcolmnunley/Renegade App/packages/ui/src/components/form.tsx
+  178:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/malcolmnunley/Renegade App/packages/ui/src/components/toast.tsx
+  106:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 4 problems (0 errors, 4 warnings)
+

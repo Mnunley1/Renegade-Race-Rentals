@@ -1,0 +1,38 @@
+
+> @renegade/backend@1.0.0 type-check /Users/malcolmnunley/Renegade App/packages/backend
+> tsc --noEmit
+
+convex/driverProfiles.ts(11,7): error TS2345: Argument of type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to parameter of type 'Validator<any, "required", any>'.
+  Type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to type 'VLiteral<any, "required">'.
+    Type '"optional"' is not assignable to type '"required"'.
+convex/driverProfiles.ts(51,9): error TS2345: Argument of type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to parameter of type 'Validator<any, "required", any>'.
+  Type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to type 'VLiteral<any, "required">'.
+    Type '"optional"' is not assignable to type '"required"'.
+convex/driverProfiles.ts(92,9): error TS2345: Argument of type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to parameter of type 'Validator<any, "required", any>'.
+  Type 'VLiteral<"advanced" | undefined, "optional">' is not assignable to type 'VLiteral<any, "required">'.
+    Type '"optional"' is not assignable to type '"required"'.
+convex/messages.ts(89,28): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+convex/messages.ts(89,57): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+convex/messages.ts(148,9): error TS18047: 'conversation' is possibly 'null'.
+convex/messages.ts(149,38): error TS18047: 'conversation' is possibly 'null'.
+convex/messages.ts(151,39): error TS18047: 'conversation' is possibly 'null'.
+convex/rentalCompletions.ts(370,37): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SchedulableFunctionReference'.
+convex/reviews.ts(124,30): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'ExpressionOrValue<Value>'.
+  Type 'undefined' is not assignable to type 'ExpressionOrValue<Value>'.
+convex/reviews.ts(449,37): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SchedulableFunctionReference'.
+convex/stripe.ts(12,5): error TS2322: Type '"2024-12-18.acacia"' is not assignable to type '"2025-08-27.basil"'.
+convex/stripe.ts(89,44): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"query", "public" | "internal">'.
+convex/stripe.ts(106,7): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(127,45): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(201,40): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"query", "public" | "internal">'.
+convex/stripe.ts(220,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(227,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(236,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(297,40): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"query", "public" | "internal">'.
+convex/stripe.ts(316,27): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/stripe.ts(328,29): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FunctionReference<"mutation", "public" | "internal">'.
+convex/teams.ts(112,42): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'ExpressionOrValue<Value>'.
+  Type 'undefined' is not assignable to type 'ExpressionOrValue<Value>'.
+ ELIFECYCLE  Command failed with exit code 2.

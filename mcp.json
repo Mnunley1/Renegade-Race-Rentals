@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "convex": {
+      "command": "pnpm",
+      "args": ["convex:mcp"],
+      "cwd": "/Users/malcolmnunley/Renegade App",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

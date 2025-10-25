@@ -1,0 +1,67 @@
+## Shared Technology Stack
+
+- **Backend**: Convex (real-time database and functions)
+- **Authentication**: Clerk
+- **Payments**: Stripe
+- **Package Manager**: pnpm workspaces
+- **Code Quality**: ESLint + Prettier + TypeScript
+
+## Monorepo Guidelines
+
+### Workspace Management
+
+- **Always use workspace commands**: `pnpm dev`, `pnpm build`, `pnpm lint`
+- **Respect package boundaries**: Apps should only import from `@renegade/convex`
+- **Shared dependencies**: Common deps are in root `package.json`
+- **App-specific deps**: Each app manages its own dependencies
+
+### Convex Backend (Shared)
+
+- **Location**: `packages/backend/convex/`
+- **Import pattern**: `import { api } from '@renegade/convex/_generated/api'`
+- **Schema**: All apps use the same database schema
+- **Functions**: Shared across all applications
+- **Deployment**: Single Convex deployment serves all apps
+
+### Development Workflow
+
+1. **Start Convex**: `pnpm convex:dev`
+2. **Start Apps**: `pnpm dev` (all) or individual app commands
+3. **Code Quality**: `pnpm lint` and `pnpm type-check`
+4. **Build**: `pnpm build` for all apps
+
+### Code Sharing Philosophy
+
+- **Convex Only**: Currently only Convex code is shared
+- **Future Expansion**: Consider sharing UI components, utilities, types
+- **No Duplication**: Avoid copying code between apps
+- **Consistent Patterns**: Use similar patterns across apps
+
+### Database Schema Awareness
+
+The shared Convex schema includes:
+
+- **Users**: Authentication, profiles, ratings
+- **Vehicles**: Listings, specifications, pricing
+- **Tracks**: Locations, venue information
+- **Reservations**: Booking lifecycle, payments
+- **Conversations/Messages**: User communication
+- **Teams**: Team management, applications
+- **Driver Profiles**: Professional driver information
+
+### Common Patterns Across Apps
+
+1. **Authentication Flow**: Clerk integration in all apps
+2. **Data Fetching**: Convex queries/mutations
+3. **Form Handling**: React Hook Form + Zod validation
+4. **Error Handling**: Consistent error boundaries
+5. **Loading States**: Proper loading indicators
+6. **TypeScript**: Strict typing throughout
+
+## Key Reminders
+
+- This is a **monorepo** - respect workspace boundaries
+- **Convex is shared** - all apps use the same backend
+- **Each app is independent** - but follows common patterns
+- **Consistency is key** - similar patterns across all apps
+- **Type safety first** - leverage shared TypeScript types

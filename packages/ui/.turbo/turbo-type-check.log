@@ -1,0 +1,4 @@
+
+> @renegade/ui@0.0.0 type-check /Users/malcolmnunley/Renegade App/packages/ui
+> tsc --noEmit
+

@@ -1,0 +1,147 @@
+import { DashboardStats, Rental, Customer, Vehicle } from '@/types';
+
+export const dashboardStats: DashboardStats = {
+  totalRentals: 248,
+  activeRentals: 42,
+  totalRevenue: 156780,
+  totalVehicles: 85,
+};
+
+export const recentRentals: Rental[] = [
+  {
+    id: 'R001',
+    customerName: 'John Smith',
+    vehicle: 'Ferrari 458 Spider',
+    startDate: '2025-01-15',
+    endDate: '2025-01-18',
+    status: 'active',
+    amount: 2400,
+  },
+  {
+    id: 'R002',
+    customerName: 'Sarah Johnson',
+    vehicle: 'Lamborghini Huracán',
+    startDate: '2025-01-12',
+    endDate: '2025-01-15',
+    status: 'completed',
+    amount: 3200,
+  },
+  {
+    id: 'R003',
+    customerName: 'Mike Davis',
+    vehicle: 'Porsche 911 GT3',
+    startDate: '2025-01-20',
+    endDate: '2025-01-22',
+    status: 'pending',
+    amount: 1800,
+  },
+  {
+    id: 'R004',
+    customerName: 'Emily Chen',
+    vehicle: 'McLaren 720S',
+    startDate: '2025-01-10',
+    endDate: '2025-01-12',
+    status: 'completed',
+    amount: 2800,
+  },
+  {
+    id: 'R005',
+    customerName: 'David Wilson',
+    vehicle: 'Aston Martin DB11',
+    startDate: '2025-01-16',
+    endDate: '2025-01-19',
+    status: 'active',
+    amount: 2200,
+  },
+];
+
+export const customers: Customer[] = [
+  {
+    id: 'C001',
+    name: 'John Smith',
+    email: 'john.smith@email.com',
+    phone: '+1 (555) 123-4567',
+    totalRentals: 8,
+    status: 'active',
+    joinDate: '2023-03-15',
+  },
+  {
+    id: 'C002',
+    name: 'Sarah Johnson',
+    email: 'sarah.j@email.com',
+    phone: '+1 (555) 234-5678',
+    totalRentals: 12,
+    status: 'active',
+    joinDate: '2023-01-22',
+  },
+  {
+    id: 'C003',
+    name: 'Mike Davis',
+    email: 'mike.davis@email.com',
+    phone: '+1 (555) 345-6789',
+    totalRentals: 5,
+    status: 'active',
+    joinDate: '2023-08-10',
+  },
+  {
+    id: 'C004',
+    name: 'Emily Chen',
+    email: 'emily.chen@email.com',
+    phone: '+1 (555) 456-7890',
+    totalRentals: 15,
+    status: 'active',
+    joinDate: '2022-11-05',
+  },
+  {
+    id: 'C005',
+    name: 'David Wilson',
+    email: 'david.w@email.com',
+    phone: '+1 (555) 567-8901',
+    totalRentals: 3,
+    status: 'inactive',
+    joinDate: '2024-02-18',
+  },
+];
+
+export const vehicles: Vehicle[] = [
+  {
+    id: 'V001',
+    name: 'Ferrari 458 Spider',
+    type: 'Sports Car',
+    status: 'rented',
+    dailyRate: 800,
+    location: 'Downtown',
+  },
+  {
+    id: 'V002',
+    name: 'Lamborghini Huracán',
+    type: 'Sports Car',
+    status: 'available',
+    dailyRate: 1200,
+    location: 'Airport',
+  },
+  {
+    id: 'V003',
+    name: 'Porsche 911 GT3',
+    type: 'Sports Car',
+    status: 'available',
+    dailyRate: 900,
+    location: 'Downtown',
+  },
+  {
+    id: 'V004',
+    name: 'McLaren 720S',
+    type: 'Supercar',
+    status: 'maintenance',
+    dailyRate: 1500,
+    location: 'West Side',
+  },
+  {
+    id: 'V005',
+    name: 'Aston Martin DB11',
+    type: 'Luxury',
+    status: 'rented',
+    dailyRate: 1000,
+    location: 'Downtown',
+  },
+];
