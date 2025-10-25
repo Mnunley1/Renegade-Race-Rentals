@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd ../.. && CI=true pnpm install --frozen-lockfile && pnpm turbo run build --filter=renegade-race-rentals",
+  "buildCommand": "cd ../.. && CI=true pnpm install --frozen-lockfile && pnpm turbo run build --filter=renegade-web-app",
   "installCommand": "echo 'Skipping install - handled in buildCommand'",
   "outputDirectory": "dist",
   "framework": "vite",
