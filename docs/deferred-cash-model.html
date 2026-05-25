@@ -369,7 +369,7 @@
 
 </div>
 
-<script>
+<script>"use strict";
   const state = {
     principal: 100000,
     paymentPct: 15,
@@ -384,23 +384,23 @@
   };
 
   function fmtUSD(n) {
-    if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
-    if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "k";
-    return "$" + n.toFixed(0);
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
+    return `$${n.toFixed(0)}`;
   }
 
   function fmtUSDExact(n) {
-    return "$" + Math.round(n).toLocaleString("en-US");
+    return `$${Math.round(n).toLocaleString("en-US")}`;
   }
 
   function fmtPct(n) {
-    return (n * 100).toFixed(1) + "%";
+    return `${(n * 100).toFixed(1)}%`;
   }
 
-  function cashPaymentAtRaise(raise, principal, pct, threshold, floor) {
-    if (raise < threshold) return 0;
-    if (raise >= floor) return principal;
-    return Math.min(principal, (pct / 100) * raise);
+  function cashPaymentAtRaise(raise) {
+    if (raise < state.qualifyingThreshold) return 0;
+    if (raise >= state.fullPayFloor) return state.principal;
+    return Math.min(state.principal, (state.paymentPct / 100) * raise);
   }
 
   function accruedInterest(principal, annualRatePct, monthsAccrued) {
@@ -411,17 +411,17 @@
   function renderScenarioA() {
     const raises = [500_000, 750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
     const rows = raises.map(r => {
-      const payment = cashPaymentAtRaise(r, state.principal, state.paymentPct, state.qualifyingThreshold, state.fullPayFloor);
+      const payment = cashPaymentAtRaise(r);
       const fires = r >= state.qualifyingThreshold;
       const fullPay = r >= state.fullPayFloor;
-      const status = !fires ? "Sub-qualifying — no payment" : fullPay ? "Full principal — cash" : "Partial — capped at percentage";
+      const status = fires ? fullPay ? "Full principal — cash" : "Partial — capped at percentage" : "Sub-qualifying — no payment";
       const pctOfRaise = r > 0 ? payment / r : 0;
       return { raise: r, payment, fires, fullPay, status, pctOfRaise };
     });
 
     const tbody = document.querySelector("#scenario-a-table tbody");
     tbody.innerHTML = rows.map(r => {
-      const tone = !r.fires ? "danger" : r.fullPay ? "success" : "warning";
+      const tone = r.fires ? r.fullPay ? "success" : "warning" : "danger";
       return `<tr class="${tone}">
         <td class="right">${fmtUSD(r.raise)}</td>
         <td>${r.fires ? "Yes" : "No"}</td>
@@ -434,7 +434,7 @@
     renderBarChart(rows);
 
     const cap = document.getElementById("scenario-a-caption");
-    cap.textContent = "Source: this model · X-axis: Gridseat raise size · Y-axis: cash paid to Renegade founders within 30 days of round close · Assumes raise happens within " + state.gracePeriodMonths + "-month grace period.";
+    cap.textContent = `Source: this model · X-axis: Gridseat raise size · Y-axis: cash paid to Renegade founders within 30 days of round close · Assumes raise happens within ${state.gracePeriodMonths}-month grace period.`;
   }
 
   function renderBarChart(rows) {
@@ -470,7 +470,7 @@
       const bx = cx - barW / 2;
       const by = y(r.payment);
       const bh = (padTop + innerH) - by;
-      const fill = !r.fires ? "#dc2626" : r.fullPay ? "#16a34a" : "#d97706";
+      const fill = r.fires ? r.fullPay ? "#16a34a" : "#d97706" : "#dc2626";
       svgContent += `<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" fill="${fill}" rx="2" />`;
       svgContent += `<text x="${cx}" y="${padTop + innerH + 16}" font-size="11" fill="#525252" text-anchor="middle" font-family="-apple-system, sans-serif">${fmtUSD(r.raise)}</text>`;
       if (r.payment > 0) {
@@ -487,7 +487,7 @@
   function niceCeil(n) {
     if (n <= 0) return 100000;
     const exp = Math.floor(Math.log10(n));
-    const base = Math.pow(10, exp);
+    const base = 10 ** exp;
     const mult = n / base;
     let nice;
     if (mult <= 1) nice = 1;
@@ -500,7 +500,7 @@
 
   function renderScenarioB() {
     document.getElementById("scenario-b-blurb").textContent =
-      "Shows what Renegade is owed at each month-mark after merger close, assuming no raise has occurred yet. Interest accrues at " + state.interestRate + "%/yr after the " + state.gracePeriodMonths + "-month grace period.";
+      `Shows what Renegade is owed at each month-mark after merger close, assuming no raise has occurred yet. Interest accrues at ${state.interestRate}%/yr after the ${state.gracePeriodMonths}-month grace period.`;
 
     const months = [3, 6, 9, 12, 15, 18, 21, 24];
     const tbody = document.querySelector("#scenario-b-table tbody");
@@ -520,9 +520,9 @@
 
   function renderScenarioC() {
     document.getElementById("scenario-c-title").textContent =
-      "Scenario C — Default conversion (no raise by month " + state.defaultTriggerMonths + ")";
+      `Scenario C — Default conversion (no raise by month ${state.defaultTriggerMonths})`;
     document.getElementById("scenario-c-blurb").textContent =
-      "If Gridseat hasn't paid by the default trigger, the unpaid balance converts to additional Gridseat equity at " + state.ratchetMultiple + "× the value (i.e. at " + ((100 / state.ratchetMultiple).toFixed(1)) + "% of the most recent priced-round price). With no priced round, the fallback assumed valuation above is used.";
+      `If Gridseat hasn't paid by the default trigger, the unpaid balance converts to additional Gridseat equity at ${state.ratchetMultiple}× the value (i.e. at ${(100 / state.ratchetMultiple).toFixed(1)}% of the most recent priced-round price). With no priced round, the fallback assumed valuation above is used.`;
 
     const monthsAtDefault = Math.max(0, state.defaultTriggerMonths - state.gracePeriodMonths);
     const interestAtDefault = accruedInterest(state.principal, state.interestRate, monthsAtDefault);
@@ -532,22 +532,22 @@
 
     document.getElementById("stat-principal").textContent = fmtUSDExact(state.principal);
     document.getElementById("stat-default-interest").textContent = fmtUSDExact(interestAtDefault);
-    document.getElementById("stat-default-interest-label").textContent = "Interest at " + state.defaultTriggerMonths + " mo";
+    document.getElementById("stat-default-interest-label").textContent = `Interest at ${state.defaultTriggerMonths} mo`;
     document.getElementById("stat-default-balance").textContent = fmtUSDExact(balance);
     document.getElementById("stat-ratchet-value").textContent = fmtUSDExact(ratchetValue);
-    document.getElementById("stat-ratchet-label").textContent = "Effective value at " + state.ratchetMultiple + "× ratchet";
+    document.getElementById("stat-ratchet-label").textContent = `Effective value at ${state.ratchetMultiple}× ratchet`;
 
     document.getElementById("cash-path-line").innerHTML =
-      "<strong>Cash path (preferred by Gridseat):</strong> pay " + fmtUSDExact(balance) + " in cash and the obligation is satisfied.";
+      `<strong>Cash path (preferred by Gridseat):</strong> pay ${fmtUSDExact(balance)} in cash and the obligation is satisfied.`;
     document.getElementById("conversion-path-line").innerHTML =
-      "<strong>Conversion path (the hammer):</strong> Gridseat issues Renegade founders additional preferred equity worth " + fmtUSDExact(ratchetValue) + " at the conversion price — equivalent to about <strong>" + fmtPct(ratchetPct) + "</strong> of Gridseat at the assumed " + fmtUSD(state.assumedGridseatVal) + " valuation, on top of the rollover equity Renegade already holds.";
+      `<strong>Conversion path (the hammer):</strong> Gridseat issues Renegade founders additional preferred equity worth ${fmtUSDExact(ratchetValue)} at the conversion price — equivalent to about <strong>${fmtPct(ratchetPct)}</strong> of Gridseat at the assumed ${fmtUSD(state.assumedGridseatVal)} valuation, on top of the rollover equity Renegade already holds.`;
     document.getElementById("conversion-rationale").textContent =
-      "The conversion path is intentionally worse for Gridseat than the cash path. That's the design — future Gridseat investors will see this clause in diligence on their own round and pressure Gridseat to pay cash rather than dilute themselves at " + state.ratchetMultiple + "×.";
+      `The conversion path is intentionally worse for Gridseat than the cash path. That's the design — future Gridseat investors will see this clause in diligence on their own round and pressure Gridseat to pay cash rather than dilute themselves at ${state.ratchetMultiple}×.`;
   }
 
   function renderScenarioD() {
     document.getElementById("scenario-d-blurb").textContent =
-      "If the default trigger fires and Gridseat still hasn't paid, the interest rate steps to " + state.defaultRate + "%/yr until satisfied. This is on top of the equity ratchet — designed to be cumulative pressure, not either/or.";
+      `If the default trigger fires and Gridseat still hasn't paid, the interest rate steps to ${state.defaultRate}%/yr until satisfied. This is on top of the equity ratchet — designed to be cumulative pressure, not either/or.`;
 
     const monthsAtDefault = Math.max(0, state.defaultTriggerMonths - state.gracePeriodMonths);
     const balanceAtDefault = state.principal + accruedInterest(state.principal, state.interestRate, monthsAtDefault);
@@ -572,11 +572,11 @@
 
   function renderTalkingPoints() {
     document.getElementById("ratchet-objection").textContent =
-      '"' + state.ratchetMultiple + "× ratchet is too aggressive.\"";
+      `"${state.ratchetMultiple}× ratchet is too aggressive."`;
     document.getElementById("never-raise-response").textContent =
-      "That's exactly why the " + state.defaultTriggerMonths + "-month default trigger exists. After that, Gridseat has to make a choice: pay cash, accept ratchet conversion, or breach. There's no \"indefinite\" option in this structure.";
+      `That's exactly why the ${state.defaultTriggerMonths}-month default trigger exists. After that, Gridseat has to make a choice: pay cash, accept ratchet conversion, or breach. There's no "indefinite" option in this structure.`;
     document.getElementById("hammer-blurb").innerHTML =
-      "The <strong>" + state.ratchetMultiple + "× equity ratchet</strong> on default is the single most important term in the deferred-cash section. Future Gridseat investors will read it in diligence on their next round — and they will push Gridseat to pay you cash rather than let it convert, because conversion dilutes them at " + state.ratchetMultiple + "×. That's the dynamic you want. Defend the ratchet harder than any other term.";
+      `The <strong>${state.ratchetMultiple}× equity ratchet</strong> on default is the single most important term in the deferred-cash section. Future Gridseat investors will read it in diligence on their next round — and they will push Gridseat to pay you cash rather than let it convert, because conversion dilutes them at ${state.ratchetMultiple}×. That's the dynamic you want. Defend the ratchet harder than any other term.`;
   }
 
   function renderAll() {
@@ -592,7 +592,7 @@
       const key = input.dataset.key;
       input.value = state[key];
       input.addEventListener("input", e => {
-        const n = parseFloat(e.target.value);
+        const n = Number.parseFloat(e.target.value);
         if (!Number.isNaN(n)) {
           state[key] = n;
           renderAll();
