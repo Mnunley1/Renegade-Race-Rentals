@@ -44,6 +44,7 @@ import {
   Trash2,
   Twitter,
   User,
+  UserCheck,
   UserPlus,
 } from "lucide-react"
 import Link from "next/link"
@@ -150,10 +151,47 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
 
   const createConversation = useMutation(api.conversations.createMotorsportsConversation)
   const recordView = useMutation(api.profileViews.recordView)
+  const isFollowing = useQuery(
+    api.follows.isFollowing,
+    user?.id && driverProfile && !driverProfile.isOwner
+      ? { targetType: "driver", targetId: profileId }
+      : "skip"
+  )
+  const followerCount = useQuery(api.follows.getFollowerCount, {
+    targetType: "driver",
+    targetId: profileId,
+  })
+  const followDriver = useMutation(api.follows.follow)
+  const unfollowDriver = useMutation(api.follows.unfollow)
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
+
+  const handleFollowToggle = async () => {
+    if (!user) {
+      router.push(
+        `/sign-in?redirect_url=${encodeURIComponent(`/motorsports/drivers/${profileId}`)}`
+      )
+      return
+    }
+
+    setIsFollowLoading(true)
+    try {
+      if (isFollowing) {
+        await unfollowDriver({ targetType: "driver", targetId: profileId })
+        toast.success("Unfollowed driver")
+      } else {
+        await followDriver({ targetType: "driver", targetId: profileId })
+        toast.success("Following driver")
+      }
+    } catch {
+      toast.error("Failed to update follow status")
+    } finally {
+      setIsFollowLoading(false)
+    }
+  }
 
   // Record profile view for non-owners
   useEffect(() => {
@@ -547,6 +585,33 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
 
           {!isOwner && (
             <>
+              <Card>
+                <CardContent className="p-6">
+                  <Button
+                    className="w-full"
+                    disabled={isFollowLoading || isFollowing === undefined}
+                    onClick={handleFollowToggle}
+                    variant={isFollowing ? "outline" : "default"}
+                  >
+                    {(() => {
+                      if (isFollowLoading) {
+                        return <Loader2 className="mr-2 size-4 animate-spin" />
+                      }
+                      if (isFollowing) {
+                        return <UserCheck className="mr-2 size-4" />
+                      }
+                      return <UserPlus className="mr-2 size-4" />
+                    })()}
+                    {isFollowing ? "Following" : "Follow"}
+                  </Button>
+                  {followerCount !== undefined && followerCount > 0 && (
+                    <p className="mt-2 text-center text-muted-foreground text-sm">
+                      {followerCount} {followerCount === 1 ? "follower" : "followers"}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
               {hasAcceptedConnection && driverProfile && (
                 <Card>
                   <CardContent className="p-6">

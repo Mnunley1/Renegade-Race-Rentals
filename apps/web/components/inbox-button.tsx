@@ -1,19 +1,16 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
 import { Button } from "@workspace/ui/components/button"
 import { useQuery } from "convex/react"
 import { MessageSquare } from "lucide-react"
 import Link from "next/link"
+import { useAuthReady } from "@/hooks/useAuthReady"
 import { api } from "@/lib/convex"
 
 export function InboxButton() {
-  const { user, isSignedIn } = useUser()
+  const { isSignedIn, userId } = useAuthReady()
 
-  const unreadCount = useQuery(
-    api.messages.getUnreadCount,
-    isSignedIn && user?.id ? { userId: user.id } : "skip"
-  )
+  const unreadCount = useQuery(api.messages.getUnreadCount, userId ? { userId } : "skip")
 
   if (!isSignedIn) {
     return null

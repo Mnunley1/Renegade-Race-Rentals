@@ -9,6 +9,7 @@ import { AlertCircle, ArrowDown, ArrowLeft, Clock, MessageSquare, RefreshCw } fr
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { useAuthReady } from "@/hooks/useAuthReady"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleError, handleErrorWithContext } from "@/lib/error-handler"
@@ -20,6 +21,7 @@ import { MessageList } from "./message-list"
 
 function ChatPageContent() {
   const { user, isSignedIn } = useUser()
+  const { userId } = useAuthReady()
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -95,16 +97,16 @@ function ChatPageContent() {
   // Fetch conversation details - skip if navigating away to prevent errors
   const conversation = useQuery(
     api.conversations.getById,
-    conversationId && user?.id && !isNavigatingAway
-      ? { conversationId: conversationId as Id<"conversations">, userId: user.id }
+    conversationId && userId && !isNavigatingAway
+      ? { conversationId: conversationId as Id<"conversations">, userId }
       : "skip"
   )
 
   // Fetch messages for the conversation - skip if navigating away to prevent errors
   const messages = useQuery(
     api.messages.getByConversation,
-    conversationId && user?.id && !isNavigatingAway
-      ? { conversationId: conversationId as Id<"conversations">, userId: user.id }
+    conversationId && userId && !isNavigatingAway
+      ? { conversationId: conversationId as Id<"conversations">, userId }
       : "skip"
   )
 

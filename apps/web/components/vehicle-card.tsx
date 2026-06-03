@@ -16,7 +16,7 @@ import { useState } from "react"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
-import { r2Url } from "@/lib/r2-url"
+import { resolveImageSrc } from "@/lib/r2-url"
 
 interface VehicleCardProps extends ComponentProps<"div"> {
   id: string
@@ -123,6 +123,8 @@ export function VehicleCard({
 
   const weekendPrice = Math.round(pricePerDay * 2.5)
 
+  const imageSrc = resolveImageSrc(imageKey, image)
+
   return (
     <>
       <Link className="block h-full" href={vehicleUrl}>
@@ -135,14 +137,14 @@ export function VehicleCard({
         >
           {/* Image Section */}
           <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-muted">
-            {imageKey || image ? (
+            {imageSrc ? (
               <Image
                 alt={name}
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
                 fill
                 quality={80}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                src={imageKey ? r2Url(imageKey) : image}
+                src={imageSrc}
               />
             ) : (
               <div className="flex h-full items-center justify-center bg-muted">

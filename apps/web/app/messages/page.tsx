@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { UserAvatar } from "@/components/user-avatar"
+import { useAuthReady } from "@/hooks/useAuthReady"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
@@ -21,7 +22,8 @@ import { r2Url } from "@/lib/r2-url"
 type FilterTab = "all" | "unread" | "archived"
 
 function MessagesPageContent() {
-  const { user, isSignedIn } = useUser()
+  const { user, isSignedIn, isLoaded: clerkLoaded } = useUser()
+  const { userId, isAuthenticated, convexAuthLoading } = useAuthReady()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterTab, setFilterTab] = useState<FilterTab>("all")
   const searchParams = useSearchParams()
@@ -48,15 +50,15 @@ function MessagesPageContent() {
     }
   }, [searchParams, router])
 
-  // Fetch user's conversations
+  // Fetch user's conversations (wait for Convex JWT — Clerk alone is not enough)
   const renterConversations = useQuery(
     api.conversations.getByUser,
-    user?.id ? { userId: user.id, role: "renter" as const } : "skip"
+    userId ? { userId, role: "renter" as const } : "skip"
   )
 
   const ownerConversations = useQuery(
     api.conversations.getByUser,
-    user?.id ? { userId: user.id, role: "owner" as const } : "skip"
+    userId ? { userId, role: "owner" as const } : "skip"
   )
 
   // Combine conversations
@@ -96,6 +98,22 @@ function MessagesPageContent() {
   // Mutations
   const bulkConversationActions = useMutation(api.conversations.bulkHostConversationActions)
 
+  if (!clerkLoaded || convexAuthLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="animate-pulse space-y-3">
+              <div className="mx-auto h-12 w-12 rounded-full bg-muted" />
+              <div className="mx-auto h-5 w-40 rounded bg-muted" />
+              <div className="mx-auto h-4 w-56 rounded bg-muted" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!(isSignedIn && user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -106,6 +124,27 @@ function MessagesPageContent() {
               <h2 className="mb-2 font-semibold text-foreground text-xl">Please sign in</h2>
               <p className="text-muted-foreground">
                 You need to be signed in to view conversations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isSignedIn && !isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+              <h2 className="mb-2 font-semibold text-foreground text-xl">
+                Connecting your session
+              </h2>
+              <p className="text-muted-foreground">
+                Signed in with Clerk, but the app is still linking to the server. Refresh the page
+                if this persists.
               </p>
             </div>
           </CardContent>

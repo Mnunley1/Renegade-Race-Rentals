@@ -1014,6 +1014,27 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_user_category", ["userId", "category"]),
 
+  // Digital Paddock — social feed (Phase 1a)
+  posts: defineTable({
+    authorId: v.string(),
+    content: v.string(),
+    visibility: v.union(v.literal("public"), v.literal("followers")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_author", ["authorId"])
+    .index("by_created", ["createdAt"]),
+
+  follows: defineTable({
+    followerId: v.string(),
+    targetType: v.union(v.literal("driver"), v.literal("team")),
+    targetId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_follower", ["followerId"])
+    .index("by_target", ["targetType", "targetId"])
+    .index("by_follower_target", ["followerId", "targetType", "targetId"]),
+
   // Webhook idempotency tracking
   webhookEvents: defineTable({
     eventId: v.string(),
