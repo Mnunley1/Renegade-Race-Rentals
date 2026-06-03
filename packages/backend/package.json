@@ -5,8 +5,8 @@
   "types": "index.ts",
   "private": true,
   "scripts": {
-    "dev": "cd ../../apps/web && convex dev",
-    "convex:dev": "cd ../../apps/web && convex dev",
+    "dev": "convex dev",
+    "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:mcp": "convex mcp start",
     "build": "echo 'Backend build complete'",
