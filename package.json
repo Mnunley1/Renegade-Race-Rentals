@@ -8,6 +8,7 @@
     "dev:web": "turbo dev --filter=web",
     "dev:admin": "turbo dev --filter=admin",
     "dev:backend": "turbo dev --filter=@renegade/backend",
+    "convex:dev": "pnpm --filter web convex:dev",
     "lint": "turbo lint",
     "format": "biome format --write .",
     "lint:check": "biome lint .",

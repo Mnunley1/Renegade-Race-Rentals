@@ -44,7 +44,6 @@ import {
   Trash2,
   Twitter,
   User,
-  UserCheck,
   UserPlus,
 } from "lucide-react"
 import Link from "next/link"
@@ -53,6 +52,7 @@ import { use, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { DriverCard } from "@/components/driver-card"
 import { DriverEndorsements } from "@/components/driver-endorsements"
+import { DriverFollowCard } from "@/components/driver-follow-card"
 import { DriverPortfolio } from "@/components/driver-portfolio"
 import { ProfileAnalytics } from "@/components/profile-analytics"
 import { useAuthReady } from "@/hooks/useAuthReady"
@@ -124,7 +124,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const { id } = use(params)
   const router = useRouter()
   const { user } = useUser()
-  const { userId, isReady: authReady } = useAuthReady()
+  const { isReady: authReady } = useAuthReady()
   const profileId = id as Id<"driverProfiles">
   const driverProfile = useQuery(api.driverProfiles.getById, {
     profileId,
@@ -153,47 +153,10 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
 
   const createConversation = useMutation(api.conversations.createMotorsportsConversation)
   const recordView = useMutation(api.profileViews.recordView)
-  const isFollowing = useQuery(
-    api.follows.isFollowing,
-    authReady && driverProfile && !driverProfile.isOwner
-      ? { targetType: "driver", targetId: profileId }
-      : "skip"
-  )
-  const followerCount = useQuery(api.follows.getFollowerCount, {
-    targetType: "driver",
-    targetId: profileId,
-  })
-  const followDriver = useMutation(api.follows.follow)
-  const unfollowDriver = useMutation(api.follows.unfollow)
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
-
-  const handleFollowToggle = async () => {
-    if (!userId) {
-      router.push(
-        `/sign-in?redirect_url=${encodeURIComponent(`/motorsports/drivers/${profileId}`)}`
-      )
-      return
-    }
-
-    setIsFollowLoading(true)
-    try {
-      if (isFollowing) {
-        await unfollowDriver({ targetType: "driver", targetId: profileId })
-        toast.success("Unfollowed driver")
-      } else {
-        await followDriver({ targetType: "driver", targetId: profileId })
-        toast.success("Following driver")
-      }
-    } catch {
-      toast.error("Failed to update follow status")
-    } finally {
-      setIsFollowLoading(false)
-    }
-  }
 
   // Record profile view for non-owners
   useEffect(() => {
@@ -587,32 +550,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
 
           {!isOwner && (
             <>
-              <Card>
-                <CardContent className="p-6">
-                  <Button
-                    className="w-full"
-                    disabled={isFollowLoading || isFollowing === undefined}
-                    onClick={handleFollowToggle}
-                    variant={isFollowing ? "outline" : "default"}
-                  >
-                    {(() => {
-                      if (isFollowLoading) {
-                        return <Loader2 className="mr-2 size-4 animate-spin" />
-                      }
-                      if (isFollowing) {
-                        return <UserCheck className="mr-2 size-4" />
-                      }
-                      return <UserPlus className="mr-2 size-4" />
-                    })()}
-                    {isFollowing ? "Following" : "Follow"}
-                  </Button>
-                  {followerCount !== undefined && followerCount > 0 && (
-                    <p className="mt-2 text-center text-muted-foreground text-sm">
-                      {followerCount} {followerCount === 1 ? "follower" : "followers"}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <DriverFollowCard profileId={profileId} />
 
               {hasAcceptedConnection && driverProfile && (
                 <Card>
