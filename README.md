@@ -1,6 +1,6 @@
-# Renegade Rentals
+# Renegade Race Rentals
 
-A marketplace platform for track day vehicle rentals, connecting vehicle owners with drivers who want to rent high-performance cars for track days. Includes a motorsports networking module for driver-team matching.
+A marketplace platform for track day vehicle rentals, connecting vehicle owners with drivers who want to rent high-performance cars for track days. Includes a motorsports networking module for driver-team matching and **The Paddock** — a social layer for following drivers and teams (feed in progress; see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ## Tech Stack
 

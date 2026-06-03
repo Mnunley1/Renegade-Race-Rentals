@@ -17,7 +17,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
-  const validImages = images.filter((img) => img && img.trim() !== "")
+  const validImages = images.map((img) => r2Url(img)).filter((url) => url.length > 0)
 
   const openGallery = useCallback((index: number) => {
     setSelectedIndex(index)
@@ -108,7 +108,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
               priority
               quality={85}
               sizes="100vw"
-              src={r2Url(validImages[0] as string)}
+              src={validImages[0] as string}
             />
           </button>
         </div>
@@ -159,7 +159,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
               priority
               quality={85}
               sizes="(max-width: 768px) 100vw, 60vw"
-              src={r2Url(validImages[0] as string)}
+              src={validImages[0] as string}
             />
           </button>
 
@@ -186,7 +186,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
                   fill
                   quality={75}
                   sizes="(max-width: 768px) 50vw, 25vw"
-                  src={r2Url(image)}
+                  src={image}
                 />
                 {isLast && (
                   <div
@@ -281,7 +281,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
                     priority
                     quality={90}
                     sizes="100vw"
-                    src={r2Url(validImages[selectedIndex])}
+                    src={validImages[selectedIndex]}
                   />
                 </div>
               )}
@@ -350,7 +350,7 @@ export function VehicleGallery({ images, vehicleName }: VehicleGalleryProps) {
                         fill
                         quality={60}
                         sizes="80px"
-                        src={r2Url(image)}
+                        src={image}
                       />
                     </button>
                   ))}

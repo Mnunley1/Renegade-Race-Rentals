@@ -52,8 +52,10 @@ import { use, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { DriverCard } from "@/components/driver-card"
 import { DriverEndorsements } from "@/components/driver-endorsements"
+import { DriverFollowCard } from "@/components/driver-follow-card"
 import { DriverPortfolio } from "@/components/driver-portfolio"
 import { ProfileAnalytics } from "@/components/profile-analytics"
+import { useAuthReady } from "@/hooks/useAuthReady"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
@@ -122,6 +124,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const { id } = use(params)
   const router = useRouter()
   const { user } = useUser()
+  const { isReady: authReady } = useAuthReady()
   const profileId = id as Id<"driverProfiles">
   const driverProfile = useQuery(api.driverProfiles.getById, {
     profileId,
@@ -131,7 +134,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const deleteProfile = useMutation(api.driverProfiles.deleteProfile)
 
   // Get user's teams to check if they can request connection
-  const userTeams = useQuery(api.teams.getByOwner, user?.id ? {} : "skip")
+  const userTeams = useQuery(api.teams.getByOwner, authReady ? {} : "skip")
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"teams"> | null>(null)
   const [connectionMessage, setConnectionMessage] = useState("")
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
@@ -547,6 +550,8 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
 
           {!isOwner && (
             <>
+              <DriverFollowCard profileId={profileId} />
+
               {hasAcceptedConnection && driverProfile && (
                 <Card>
                   <CardContent className="p-6">

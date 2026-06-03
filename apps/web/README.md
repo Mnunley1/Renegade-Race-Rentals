@@ -1,11 +1,12 @@
-# Renegade Rentals - Web Application
+# Renegade Race Rentals — Web Application
 
-Track car rental platform built with Next.js 15, Clerk authentication, and a modern UI.
+Track car rental marketplace and motorsports network ("The Paddock") built with Next.js, Clerk authentication, and Convex.
 
 ## Project Structure
 
 ### Pages
 
+- **The Paddock** (`/paddock`) - Social feed (coming soon)
 - **Home** (`/`) - Hero section, featured vehicles, categories
 - **Sign In** (`/sign-in`) - Clerk authentication
 - **Sign Up** (`/sign-up`) - Clerk registration

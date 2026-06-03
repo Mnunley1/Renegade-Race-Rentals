@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { getCurrentUserOrThrow } from "./users"
+import { getCurrentUser, getCurrentUserOrThrow } from "./users"
 
 export const create = mutation({
   args: {
@@ -148,7 +148,10 @@ export const getById = query({
 export const getByOwner = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx)
+    const user = await getCurrentUser(ctx)
+    if (!user) {
+      return []
+    }
     return await ctx.db
       .query("teams")
       .withIndex("by_owner", (q) => q.eq("ownerId", user.externalId))

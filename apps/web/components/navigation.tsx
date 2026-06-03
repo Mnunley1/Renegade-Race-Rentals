@@ -131,6 +131,19 @@ function MobileSidebar() {
                 <Link
                   className={cn(
                     sidebarLinkClass,
+                    pathname === "/paddock" || pathname?.startsWith("/paddock")
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  href="/paddock"
+                >
+                  Paddock
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  className={cn(
+                    sidebarLinkClass,
                     pathname === "/vehicles" ? "bg-accent text-foreground" : "text-muted-foreground"
                   )}
                   href="/vehicles"
@@ -315,6 +328,17 @@ export function Navigation() {
               </span>
             </Link>
             <div className="hidden items-center gap-8 md:flex">
+              <Link
+                className={cn(
+                  "font-medium text-sm transition-colors hover:text-foreground",
+                  pathname === "/paddock" || pathname?.startsWith("/paddock")
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+                href="/paddock"
+              >
+                Paddock
+              </Link>
               <Link
                 className={cn(
                   "font-medium text-sm transition-colors hover:text-foreground",
