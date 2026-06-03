@@ -55,6 +55,7 @@ import { DriverCard } from "@/components/driver-card"
 import { DriverEndorsements } from "@/components/driver-endorsements"
 import { DriverPortfolio } from "@/components/driver-portfolio"
 import { ProfileAnalytics } from "@/components/profile-analytics"
+import { useAuthReady } from "@/hooks/useAuthReady"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
@@ -123,6 +124,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const { id } = use(params)
   const router = useRouter()
   const { user } = useUser()
+  const { userId, isReady: authReady } = useAuthReady()
   const profileId = id as Id<"driverProfiles">
   const driverProfile = useQuery(api.driverProfiles.getById, {
     profileId,
@@ -132,7 +134,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const deleteProfile = useMutation(api.driverProfiles.deleteProfile)
 
   // Get user's teams to check if they can request connection
-  const userTeams = useQuery(api.teams.getByOwner, user?.id ? {} : "skip")
+  const userTeams = useQuery(api.teams.getByOwner, authReady ? {} : "skip")
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"teams"> | null>(null)
   const [connectionMessage, setConnectionMessage] = useState("")
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
@@ -153,7 +155,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const recordView = useMutation(api.profileViews.recordView)
   const isFollowing = useQuery(
     api.follows.isFollowing,
-    user?.id && driverProfile && !driverProfile.isOwner
+    authReady && driverProfile && !driverProfile.isOwner
       ? { targetType: "driver", targetId: profileId }
       : "skip"
   )
@@ -170,7 +172,7 @@ export default function DriverDetailPage({ params }: DriverDetailPageProps) {
   const [isToggling, setIsToggling] = useState(false)
 
   const handleFollowToggle = async () => {
-    if (!user) {
+    if (!userId) {
       router.push(
         `/sign-in?redirect_url=${encodeURIComponent(`/motorsports/drivers/${profileId}`)}`
       )
