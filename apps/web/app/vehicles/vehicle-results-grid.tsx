@@ -12,7 +12,7 @@ import {
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
-import { ChevronRight, Grid3x3, List, Search, X } from "lucide-react"
+import { ChevronRight, Grid3x3, List, Loader2, Search, X } from "lucide-react"
 import { Suspense } from "react"
 import { VehicleCard } from "@/components/vehicle-card"
 import type { FilterActions, FilterState, SortOption, VehicleItem, ViewMode } from "./types"
@@ -28,6 +28,7 @@ type VehicleResultsGridProps = {
   setSortBy: (sort: string) => void
   hasMore: boolean
   loadMore: () => void
+  isLoadingMore?: boolean
   clearFilters: () => void
   clearSearchAndDates: () => void
   itemsPerPage: number
@@ -50,6 +51,7 @@ export function VehicleResultsGrid({
   setSortBy,
   hasMore,
   loadMore,
+  isLoadingMore = false,
   clearFilters,
   clearSearchAndDates,
   itemsPerPage,
@@ -67,8 +69,10 @@ export function VehicleResultsGrid({
         <p className="text-muted-foreground text-sm sm:text-base">
           <span className="font-bold text-base text-foreground sm:text-lg">
             {filteredVehicles.length}
+            {hasMore ? "+" : ""}
           </span>{" "}
-          {filteredVehicles.length === 1 ? "vehicle" : "vehicles"} available
+          {filteredVehicles.length === 1 ? "vehicle" : "vehicles"}{" "}
+          {hasMore ? "loaded" : "available"}
         </p>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -262,12 +266,27 @@ export function VehicleResultsGrid({
 
           {hasMore && (
             <div className="mt-6 flex flex-col items-center gap-3 sm:mt-8 sm:gap-4">
-              <Button className="w-full sm:w-auto" onClick={loadMore} size="lg" variant="outline">
-                Load More Vehicles
-                <ChevronRight className="ml-2 size-4" />
+              <Button
+                className="w-full sm:w-auto"
+                disabled={isLoadingMore}
+                onClick={loadMore}
+                size="lg"
+                variant="outline"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Load More Vehicles
+                    <ChevronRight className="ml-2 size-4" />
+                  </>
+                )}
               </Button>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                Showing {paginatedVehicles.length} of {filteredVehicles.length} vehicles
+                Showing {paginatedVehicles.length} vehicles
               </p>
             </div>
           )}

@@ -61,6 +61,15 @@ registerRoutes(http, components.stripe, {
             stripePaymentIntentId: paymentIntent.id,
           })
         }
+      } else if (paymentIntent.metadata?.type === "coaching_booking") {
+        // Handle coaching booking payment
+        const bookingId = paymentIntent.metadata.coachingBookingId
+        if (bookingId) {
+          await ctx.runMutation(internal.coachingPayments.handlePaymentSuccess, {
+            bookingId: bookingId as any,
+            stripePaymentIntentId: paymentIntent.id,
+          })
+        }
       }
 
       // Record successful processing
@@ -94,6 +103,14 @@ registerRoutes(http, components.stripe, {
           paymentId: payment._id,
           failureReason: paymentIntent.last_payment_error?.message,
         })
+      } else if (paymentIntent.metadata?.type === "coaching_booking") {
+        const bookingId = paymentIntent.metadata.coachingBookingId
+        if (bookingId) {
+          await ctx.runMutation(internal.coachingPayments.handlePaymentFailure, {
+            bookingId: bookingId as any,
+            failureReason: paymentIntent.last_payment_error?.message,
+          })
+        }
       }
 
       // Record successful processing

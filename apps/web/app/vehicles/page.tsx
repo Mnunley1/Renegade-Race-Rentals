@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { usePaginatedQuery, useQuery } from "convex/react"
 import { Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
@@ -101,7 +101,6 @@ function VehiclesPageContent() {
 
   // View & pagination state
   const [viewMode, setViewMode] = useState<ViewMode>(initialState.viewMode)
-  const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 12
 
   // Filter state
@@ -258,7 +257,6 @@ function VehiclesPageContent() {
     setMinRating("")
     setSelectedDates({ start: "", end: "" })
     setDateRange(undefined)
-    setCurrentPage(1)
     setSelectedSafetyEquipment([])
     setSelectedExperienceLevel("all")
     setSelectedTireType("all")
@@ -496,23 +494,93 @@ function VehiclesPageContent() {
 
   // Data queries
   const tracksData = useQuery(api.tracks.getAll, {})
-  const vehiclesData = useQuery(
-    api.vehicles.searchWithAvailability,
-    tracksData
-      ? {
-          startDate: selectedDates.start || undefined,
-          endDate: selectedDates.end || undefined,
-          trackId:
-            selectedTrack !== "all"
-              ? (tracksData.find((t) => t.name === selectedTrack)?._id as Id<"tracks">)
-              : undefined,
-          limit: 200,
-          userLatitude: userLocation && maxDistance > 0 ? userLocation.lat : undefined,
-          userLongitude: userLocation && maxDistance > 0 ? userLocation.lng : undefined,
-          maxDistanceMiles: userLocation && maxDistance > 0 ? maxDistance : undefined,
-        }
-      : "skip"
-  )
+
+  // Translate the price range chip ("$100-$200", "$500+", or "any") into bounds
+  const priceBounds = useMemo<{ min?: number; max?: number }>(() => {
+    if (customPriceRange) {
+      return { min: customPriceRange[0], max: customPriceRange[1] }
+    }
+    if (selectedPriceRange === "any") {
+      return {}
+    }
+    if (selectedPriceRange.endsWith("+")) {
+      const min = Number.parseInt(selectedPriceRange.replace(/\D/g, ""), 10)
+      return Number.isFinite(min) ? { min } : {}
+    }
+    const [rawMin, rawMax] = selectedPriceRange
+      .split("-")
+      .map((p: string) => Number.parseInt(p.replace(/\D/g, ""), 10))
+    const bounds: { min?: number; max?: number } = {}
+    if (Number.isFinite(rawMin)) {
+      bounds.min = rawMin
+    }
+    if (Number.isFinite(rawMax)) {
+      bounds.max = rawMax
+    }
+    return bounds
+  }, [customPriceRange, selectedPriceRange])
+
+  const parsedInt = (s: string) => {
+    const n = Number.parseInt(s, 10)
+    return Number.isFinite(n) ? n : undefined
+  }
+
+  const searchArgs = useMemo(() => {
+    if (!tracksData) {
+      return "skip" as const
+    }
+    return {
+      startDate: selectedDates.start || undefined,
+      endDate: selectedDates.end || undefined,
+      trackId:
+        selectedTrack !== "all"
+          ? (tracksData.find((t) => t.name === selectedTrack)?._id as Id<"tracks">)
+          : undefined,
+      make: selectedMake !== "all" ? selectedMake : undefined,
+      model: selectedModel !== "all" ? selectedModel : undefined,
+      transmission: selectedTransmission !== "all" ? selectedTransmission : undefined,
+      drivetrain: selectedDriveType !== "all" ? selectedDriveType : undefined,
+      minYear: parsedInt(minYear),
+      maxYear: parsedInt(maxYear),
+      minHorsepower: parsedInt(minHorsepower),
+      maxHorsepower: parsedInt(maxHorsepower),
+      minDailyRate: priceBounds.min,
+      maxDailyRate: priceBounds.max,
+      experienceLevel: selectedExperienceLevel !== "all" ? selectedExperienceLevel : undefined,
+      tireType: selectedTireType !== "all" ? selectedTireType : undefined,
+      deliveryOnly: deliveryOnly || undefined,
+      userLatitude: userLocation && maxDistance > 0 ? userLocation.lat : undefined,
+      userLongitude: userLocation && maxDistance > 0 ? userLocation.lng : undefined,
+      maxDistanceMiles: userLocation && maxDistance > 0 ? maxDistance : undefined,
+    }
+  }, [
+    tracksData,
+    selectedDates.start,
+    selectedDates.end,
+    selectedTrack,
+    selectedMake,
+    selectedModel,
+    selectedTransmission,
+    selectedDriveType,
+    minYear,
+    maxYear,
+    minHorsepower,
+    maxHorsepower,
+    priceBounds,
+    selectedExperienceLevel,
+    selectedTireType,
+    deliveryOnly,
+    userLocation,
+    maxDistance,
+  ])
+
+  const {
+    results: vehiclesData,
+    status: paginationStatus,
+    loadMore: paginationLoadMore,
+  } = usePaginatedQuery(api.vehicles.searchWithAvailability, searchArgs, {
+    initialNumItems: itemsPerPage,
+  })
 
   const vehicleStats = useQuery(
     api.reviews.getVehicleStatsBatch,
@@ -609,7 +677,8 @@ function VehiclesPageContent() {
     return Array.from(new Set(suggestions)).slice(0, 5)
   }, [debouncedSearchQuery, vehicles])
 
-  // Filter vehicles (bug fix: customPriceRange in deps)
+  // Server-side filters (make/model/transmission/drivetrain/year/hp/price/experience/tire/delivery/dates/distance)
+  // are applied in the Convex query. Only the filters below run on accumulated results.
   const filteredVehicles = useMemo(() => {
     let filtered = vehicles.filter((vehicle) => {
       if (debouncedSearchQuery) {
@@ -627,75 +696,10 @@ function VehiclesPageContent() {
           return false
         }
       }
-      if (selectedTrack !== "all" && vehicle.track !== selectedTrack) {
-        return false
-      }
-      if (selectedMake !== "all" && vehicle.make !== selectedMake) {
-        return false
-      }
-      if (selectedModel !== "all" && vehicle.model !== selectedModel) {
-        return false
-      }
-      if (
-        selectedDriveType !== "all" &&
-        vehicle.drivetrain &&
-        vehicle.drivetrain.toUpperCase() !== selectedDriveType.toUpperCase()
-      ) {
-        return false
-      }
       if (
         selectedLocation &&
         !vehicle.location.toLowerCase().includes(selectedLocation.toLowerCase())
       ) {
-        return false
-      }
-
-      // Price filter (bug fix: check customPriceRange first)
-      if (customPriceRange) {
-        const [minPrice, maxPrice] = customPriceRange
-        if (vehicle.pricePerDay < minPrice || vehicle.pricePerDay > maxPrice) {
-          return false
-        }
-      } else if (selectedPriceRange !== "any") {
-        if (selectedPriceRange.endsWith("+")) {
-          const minPrice = Number.parseInt(selectedPriceRange.replace(/\D/g, ""), 10)
-          if (vehicle.pricePerDay < minPrice) {
-            return false
-          }
-        } else {
-          const [min, max] = selectedPriceRange
-            .split("-")
-            .map((p: string) => Number.parseInt(p.replace(/\D/g, ""), 10))
-          if (vehicle.pricePerDay < min || vehicle.pricePerDay > max) {
-            return false
-          }
-        }
-      }
-
-      if (
-        minHorsepower &&
-        vehicle.horsepower &&
-        vehicle.horsepower < Number.parseInt(minHorsepower, 10)
-      ) {
-        return false
-      }
-      if (
-        maxHorsepower &&
-        vehicle.horsepower &&
-        vehicle.horsepower > Number.parseInt(maxHorsepower, 10)
-      ) {
-        return false
-      }
-      if (
-        selectedTransmission !== "all" &&
-        vehicle.transmission?.toLowerCase() !== selectedTransmission.toLowerCase()
-      ) {
-        return false
-      }
-      if (minYear && vehicle.year < Number.parseInt(minYear, 10)) {
-        return false
-      }
-      if (maxYear && vehicle.year > Number.parseInt(maxYear, 10)) {
         return false
       }
       if (minRating && minRating !== "any" && vehicle.rating < Number.parseFloat(minRating)) {
@@ -707,19 +711,6 @@ function VehiclesPageContent() {
           return false
         }
       }
-      if (
-        selectedExperienceLevel !== "all" &&
-        vehicle.experienceLevel !== selectedExperienceLevel
-      ) {
-        return false
-      }
-      if (selectedTireType !== "all" && vehicle.tireType !== selectedTireType) {
-        return false
-      }
-      if (deliveryOnly && !vehicle.deliveryAvailable) {
-        return false
-      }
-
       return true
     })
 
@@ -741,36 +732,10 @@ function VehiclesPageContent() {
     })
 
     return filtered
-  }, [
-    vehicles,
-    debouncedSearchQuery,
-    selectedTrack,
-    selectedMake,
-    selectedModel,
-    selectedDriveType,
-    selectedLocation,
-    selectedPriceRange,
-    customPriceRange,
-    minHorsepower,
-    maxHorsepower,
-    selectedTransmission,
-    minYear,
-    maxYear,
-    minRating,
-    sortBy,
-    selectedSafetyEquipment,
-    selectedExperienceLevel,
-    selectedTireType,
-    deliveryOnly,
-  ])
+  }, [vehicles, debouncedSearchQuery, selectedLocation, minRating, sortBy, selectedSafetyEquipment])
 
-  const paginatedVehicles = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredVehicles.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredVehicles, currentPage])
-
-  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage)
-  const hasMore = currentPage < totalPages
+  const hasMore = paginationStatus === "CanLoadMore"
+  const isLoadingMore = paginationStatus === "LoadingMore"
 
   // Reset model when make changes
   useEffect(() => {
@@ -799,11 +764,6 @@ function VehiclesPageContent() {
       }
     }
   }, [selectedDates.end, selectedDates.start]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [])
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -875,8 +835,8 @@ function VehiclesPageContent() {
   ])
 
   const loadMore = () => {
-    if (hasMore) {
-      setCurrentPage((prev) => prev + 1)
+    if (paginationStatus === "CanLoadMore") {
+      paginationLoadMore(itemsPerPage)
     }
   }
 
@@ -966,7 +926,8 @@ function VehiclesPageContent() {
               filteredVehicles={filteredVehicles}
               filterState={filterState}
               hasMore={hasMore}
-              isLoading={vehiclesData === undefined || tracksData === undefined}
+              isLoading={paginationStatus === "LoadingFirstPage" || tracksData === undefined}
+              isLoadingMore={isLoadingMore}
               itemsPerPage={itemsPerPage}
               loadMore={loadMore}
               mobileFilters={
@@ -987,7 +948,7 @@ function VehiclesPageContent() {
                 />
               }
               onToggleCompare={toggleCompare}
-              paginatedVehicles={paginatedVehicles}
+              paginatedVehicles={filteredVehicles}
               setSortBy={(s) => setSortBy(s as SortOption)}
               setViewMode={setViewMode}
               sortBy={sortBy}

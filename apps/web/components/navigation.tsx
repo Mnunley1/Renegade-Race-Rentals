@@ -12,10 +12,21 @@ import {
 } from "@workspace/ui/components/sheet"
 import { cn } from "@workspace/ui/lib/utils"
 import { useQuery } from "convex/react"
-import { Calendar, Car, Heart, LogOut, Menu, MessageSquare, Settings, User } from "lucide-react"
+import {
+  Calendar,
+  Car,
+  GraduationCap,
+  Heart,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Settings,
+  User,
+} from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { CoachNavLink } from "@/components/coach-nav-link"
 import { HostNavLink } from "@/components/host-nav-link"
 import { InboxButton } from "@/components/inbox-button"
 import { NotificationBell } from "@/components/notification-bell"
@@ -76,11 +87,46 @@ function HostingSidebarLink({
   )
 }
 
+function CoachingSidebarLink({
+  hasProfile,
+  pathname,
+}: {
+  hasProfile: boolean
+  pathname: string | null
+}) {
+  if (!hasProfile) {
+    return (
+      <SheetClose asChild>
+        <Link className={cn(sidebarLinkClass, "text-muted-foreground")} href="/coach/onboarding">
+          <GraduationCap className="size-4" />
+          Become a Coach
+        </Link>
+      </SheetClose>
+    )
+  }
+
+  return (
+    <SheetClose asChild>
+      <Link
+        className={cn(
+          sidebarLinkClass,
+          pathname?.startsWith("/coach") ? "bg-accent text-foreground" : "text-muted-foreground"
+        )}
+        href="/coach/dashboard"
+      >
+        <GraduationCap className="size-4" />
+        Coach Dashboard
+      </Link>
+    </SheetClose>
+  )
+}
+
 function MobileSidebar() {
   const pathname = usePathname()
   const { user, isSignedIn } = useUser()
   const { signOut } = useAuth()
   const onboardingStatus = useQuery(api.users.getHostOnboardingStatus, isSignedIn ? {} : "skip")
+  const coachProfile = useQuery(api.coachProfiles.getByUser, isSignedIn ? {} : "skip")
   const unreadCount = useQuery(
     api.messages.getUnreadCount,
     isSignedIn && user?.id ? { userId: user.id } : "skip"
@@ -151,6 +197,19 @@ function MobileSidebar() {
                   Motorsports
                 </Link>
               </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  className={cn(
+                    sidebarLinkClass,
+                    pathname === "/coaches" || pathname?.startsWith("/coaches")
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  href="/coaches"
+                >
+                  Coaches
+                </Link>
+              </SheetClose>
             </div>
 
             {isSignedIn && (
@@ -210,10 +269,11 @@ function MobileSidebar() {
                   </SheetClose>
                 </div>
 
-                {/* Hosting */}
+                {/* Hosting & coaching */}
                 <Separator className="my-4" />
                 <div className="space-y-1">
                   <HostingSidebarLink onboardingStatus={onboardingStatus} pathname={pathname} />
+                  <CoachingSidebarLink hasProfile={!!coachProfile} pathname={pathname} />
                 </div>
 
                 {/* Account */}
@@ -292,7 +352,7 @@ export function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 border-border border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center gap-4">
             <MobileSidebar />
@@ -335,6 +395,17 @@ export function Navigation() {
               >
                 Motorsports
               </Link>
+              <Link
+                className={cn(
+                  "font-medium text-sm transition-colors hover:text-foreground",
+                  pathname === "/coaches" || pathname?.startsWith("/coaches")
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                )}
+                href="/coaches"
+              >
+                Coaches
+              </Link>
               {isSignedIn && (
                 <>
                   <Separator className="h-5" orientation="vertical" />
@@ -363,6 +434,7 @@ export function Navigation() {
 
           <div className="flex items-center gap-2">
             <HostNavLink className="hidden md:flex" />
+            <CoachNavLink className="hidden md:flex" />
             <InboxButton />
             <NotificationBell />
             <UserMenu />

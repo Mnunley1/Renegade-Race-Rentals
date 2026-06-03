@@ -11,6 +11,10 @@
 import type * as admin from "../admin.js";
 import type * as auditLog from "../auditLog.js";
 import type * as availability from "../availability.js";
+import type * as coachAvailability from "../coachAvailability.js";
+import type * as coachProfiles from "../coachProfiles.js";
+import type * as coachingBookings from "../coachingBookings.js";
+import type * as coachingPayments from "../coachingPayments.js";
 import type * as conversations from "../conversations.js";
 import type * as crons from "../crons.js";
 import type * as damageInvoices from "../damageInvoices.js";
@@ -45,6 +49,7 @@ import type * as reservations from "../reservations.js";
 import type * as reviewStats from "../reviewStats.js";
 import type * as reviews from "../reviews.js";
 import type * as sanitize from "../sanitize.js";
+import type * as seedCoaches from "../seedCoaches.js";
 import type * as stripe from "../stripe.js";
 import type * as teamApplications from "../teamApplications.js";
 import type * as teamDriverConnections from "../teamDriverConnections.js";
@@ -76,6 +81,10 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auditLog: typeof auditLog;
   availability: typeof availability;
+  coachAvailability: typeof coachAvailability;
+  coachProfiles: typeof coachProfiles;
+  coachingBookings: typeof coachingBookings;
+  coachingPayments: typeof coachingPayments;
   conversations: typeof conversations;
   crons: typeof crons;
   damageInvoices: typeof damageInvoices;
@@ -110,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   reviewStats: typeof reviewStats;
   reviews: typeof reviews;
   sanitize: typeof sanitize;
+  seedCoaches: typeof seedCoaches;
   stripe: typeof stripe;
   teamApplications: typeof teamApplications;
   teamDriverConnections: typeof teamDriverConnections;

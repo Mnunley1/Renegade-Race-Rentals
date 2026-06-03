@@ -355,11 +355,13 @@ function MessagesPageContent() {
                         <p className="mb-1 truncate text-muted-foreground text-xs">
                           {conversation.vehicle
                             ? `${conversation.vehicle.year} ${conversation.vehicle.make} ${conversation.vehicle.model}`
-                            : conversation.team
-                              ? `Team: ${conversation.team.name}`
-                              : conversation.driverProfile
-                                ? "Driver conversation"
-                                : "Conversation"}
+                            : conversation.coachProfile
+                              ? "Coaching"
+                              : conversation.team
+                                ? `Team: ${conversation.team.name}`
+                                : conversation.driverProfile
+                                  ? "Driver conversation"
+                                  : "Conversation"}
                         </p>
                         <p
                           className={cn(

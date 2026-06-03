@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { Archive, MoreVertical, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { UserAvatar } from "@/components/user-avatar"
 
 interface VehicleInfo {
@@ -20,9 +21,14 @@ interface ParticipantInfo {
   name?: string | null
 }
 
+interface CoachProfileInfo {
+  _id: string
+}
+
 interface ChatHeaderProps {
   participant: ParticipantInfo | null | undefined
   vehicle: VehicleInfo | null | undefined
+  coachProfile?: CoachProfileInfo | null
   isPending: boolean
   onArchive: () => void
   onDelete: () => void
@@ -31,14 +37,25 @@ interface ChatHeaderProps {
 export function ChatHeader({
   participant,
   vehicle,
+  coachProfile,
   isPending,
   onArchive,
   onDelete,
 }: ChatHeaderProps) {
   const name = participant?.name || "Unknown User"
-  const vehicleLabel = vehicle
-    ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
-    : "Vehicle conversation"
+  const subtitle = (() => {
+    if (coachProfile) {
+      return (
+        <Link className="underline-offset-2 hover:underline" href={`/coaches/${coachProfile._id}`}>
+          Coaching session · view coach profile
+        </Link>
+      )
+    }
+    if (vehicle) {
+      return `${vehicle.year} ${vehicle.make} ${vehicle.model}`
+    }
+    return "Conversation"
+  })()
 
   return (
     <div className="flex items-center justify-between">
@@ -46,7 +63,7 @@ export function ChatHeader({
         <UserAvatar name={name} size="md" />
         <div className="min-w-0">
           <h2 className="truncate font-semibold text-foreground">{name}</h2>
-          <p className="truncate text-muted-foreground text-sm">{vehicleLabel}</p>
+          <p className="truncate text-muted-foreground text-sm">{subtitle}</p>
         </div>
       </div>
       {!isPending && (

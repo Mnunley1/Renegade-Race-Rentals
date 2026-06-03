@@ -1,6 +1,7 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
@@ -13,6 +14,7 @@ import {
   Clock,
   CreditCard,
   FlagTriangleRight,
+  GraduationCap,
   Search,
   Send,
   XCircle,
@@ -175,6 +177,87 @@ function TripList({
   )
 }
 
+function CoachingBookingsList({ coachingData }: { coachingData: any[] | undefined }) {
+  if (coachingData === undefined) {
+    return <p className="py-12 text-center text-muted-foreground">Loading coaching sessions…</p>
+  }
+  if (coachingData.length === 0) {
+    return (
+      <EmptyState
+        description="Book a coach to elevate your next track day."
+        icon={GraduationCap}
+        title="No coaching sessions yet"
+      />
+    )
+  }
+
+  const statusVariant: Record<string, { label: string; className: string }> = {
+    pending: { label: "Awaiting coach", className: "" },
+    approved: {
+      label: "Approved — pay to confirm",
+      className: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
+    },
+    confirmed: {
+      label: "Confirmed",
+      className: "bg-green-500/15 text-green-900 dark:text-green-200",
+    },
+    completed: { label: "Completed", className: "" },
+    cancelled: { label: "Cancelled", className: "" },
+    declined: { label: "Declined", className: "" },
+    expired: { label: "Expired — not paid in time", className: "" },
+  }
+
+  const sessionLabel = (b: any) => {
+    if (b.sessionType === "hourly") return `${b.hours}-hour session`
+    if (b.sessionType === "half_day") return "Half-day session"
+    return "Full-day session"
+  }
+
+  return (
+    <div className="space-y-3">
+      {coachingData.map((b) => {
+        const variant = statusVariant[b.status] || statusVariant.pending
+        return (
+          <Card key={b._id}>
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <GraduationCap className="size-4 text-muted-foreground" />
+                  <Link
+                    className="font-semibold hover:underline"
+                    href={`/coaches/${b.coachProfileId}`}
+                  >
+                    {b.coach?.name || "Coach"}
+                  </Link>
+                  <Badge className={variant?.className} variant="outline">
+                    {variant?.label}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  {sessionLabel(b)} · {new Date(`${b.startDate}T00:00:00`).toLocaleDateString()}
+                  {b.startTime ? ` · ${b.startTime}` : ""}
+                </p>
+                {b.eventName && <p className="text-muted-foreground text-sm">{b.eventName}</p>}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-semibold">${(b.totalAmount / 100).toFixed(0)}</span>
+                {b.status === "approved" && (
+                  <Button asChild size="sm">
+                    <Link href={`/checkout/pay-coaching?bookingId=${b._id}`}>
+                      <CreditCard className="mr-2 size-4" />
+                      Pay
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function TripsPage() {
   const { user } = useUser()
   const [searchQuery, setSearchQuery] = useState("")
@@ -185,6 +268,11 @@ export default function TripsPage() {
 
   const reservationsData = useQuery(
     api.reservations.getByUser,
+    user?.id ? { userId: user.id, role: "renter" as const } : "skip"
+  )
+
+  const coachingData = useQuery(
+    api.coachingBookings.getByUser,
     user?.id ? { userId: user.id, role: "renter" as const } : "skip"
   )
 
@@ -270,6 +358,10 @@ export default function TripsPage() {
               <TabsTrigger value="cancelled">
                 Cancelled
                 {cancelled.length > 0 && ` (${cancelled.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="coaching">
+                Coaching
+                {coachingData && coachingData.length > 0 && ` (${coachingData.length})`}
               </TabsTrigger>
             </TabsList>
 
@@ -379,6 +471,11 @@ export default function TripsPage() {
             ) : (
               <TripList searchQuery={searchQuery} sortDirection={pastSort} trips={past} />
             )}
+          </TabsContent>
+
+          {/* Coaching */}
+          <TabsContent value="coaching">
+            <CoachingBookingsList coachingData={coachingData} />
           </TabsContent>
 
           {/* Cancelled */}

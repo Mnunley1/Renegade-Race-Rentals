@@ -608,6 +608,7 @@ function ChatPageContent() {
           {/* Header */}
           <CardHeader className="border-b py-3">
             <ChatHeader
+              coachProfile={pendingConversation ? null : conversation?.coachProfile}
               isPending={!!pendingConversation}
               onArchive={handleArchiveConversation}
               onDelete={handleDeleteConversation}
