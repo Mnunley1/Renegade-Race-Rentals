@@ -251,6 +251,10 @@ export const send = mutation({
       })
     }
 
+    // Preview text for the conversation list (fall back to a photo label for image-only messages)
+    const lastMessagePreview =
+      args.content || (args.attachments && args.attachments.length > 0 ? "📷 Photo" : "")
+
     if (conversation && conversation.renterId === senderId) {
       // Sender is renter, so owner receives the message
       const updateData: {
@@ -264,7 +268,7 @@ export const send = mutation({
         reopenedAtOwner?: number
       } = {
         lastMessageAt: now,
-        lastMessageText: args.content,
+        lastMessageText: lastMessagePreview,
         lastMessageSenderId: senderId,
         unreadCountOwner: (conversation.unreadCountOwner || 0) + 1,
         isActive: activateConversation ? true : conversation.isActive,
@@ -292,7 +296,7 @@ export const send = mutation({
         reopenedAtRenter?: number
       } = {
         lastMessageAt: now,
-        lastMessageText: args.content,
+        lastMessageText: lastMessagePreview,
         lastMessageSenderId: senderId,
         unreadCountRenter: (conversation.unreadCountRenter || 0) + 1,
         isActive: activateConversation ? true : (conversation.isActive ?? true),

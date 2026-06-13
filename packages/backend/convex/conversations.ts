@@ -1,6 +1,25 @@
 import { v } from "convex/values"
 import type { Id } from "./_generated/dataModel"
-import { mutation, query } from "./_generated/server"
+import { mutation, type QueryCtx, query } from "./_generated/server"
+
+// Resolve the primary (or first available) image key for a vehicle thumbnail
+async function getVehicleThumbnailKey(
+  ctx: QueryCtx,
+  vehicleId: Id<"vehicles"> | undefined
+): Promise<string | null> {
+  if (!vehicleId) return null
+  const primary = await ctx.db
+    .query("vehicleImages")
+    .withIndex("by_vehicle_primary", (q) => q.eq("vehicleId", vehicleId).eq("isPrimary", true))
+    .first()
+  const image =
+    primary ??
+    (await ctx.db
+      .query("vehicleImages")
+      .withIndex("by_vehicle", (q) => q.eq("vehicleId", vehicleId))
+      .first())
+  return image?.r2Key ?? null
+}
 
 // Get conversations for a user (as renter or owner)
 export const getByUser = query({
@@ -45,7 +64,7 @@ export const getByUser = query({
     // Get vehicle and user details
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (conversation) => {
-        const [vehicle, renter, owner] = await Promise.all([
+        const [vehicle, renter, owner, vehicleImageKey] = await Promise.all([
           conversation.vehicleId ? ctx.db.get(conversation.vehicleId) : null,
           ctx.db
             .query("users")
@@ -55,6 +74,7 @@ export const getByUser = query({
             .query("users")
             .withIndex("by_external_id", (q) => q.eq("externalId", conversation.ownerId))
             .first(),
+          getVehicleThumbnailKey(ctx, conversation.vehicleId),
         ])
 
         // Get team/driver info for motorsports conversations
@@ -90,6 +110,7 @@ export const getByUser = query({
         return {
           ...conversation,
           vehicle,
+          vehicleImageKey,
           renter,
           owner,
           team,
@@ -166,7 +187,7 @@ export const getById = query({
       throw new Error("Conversation not found")
     }
 
-    const [vehicle, renter, owner] = await Promise.all([
+    const [vehicle, renter, owner, vehicleImageKey] = await Promise.all([
       conversation.vehicleId ? ctx.db.get(conversation.vehicleId) : null,
       ctx.db
         .query("users")
@@ -176,6 +197,7 @@ export const getById = query({
         .query("users")
         .withIndex("by_external_id", (q) => q.eq("externalId", conversation.ownerId))
         .first(),
+      getVehicleThumbnailKey(ctx, conversation.vehicleId),
     ])
 
     const team = conversation.teamId ? await ctx.db.get(conversation.teamId) : null
@@ -210,6 +232,7 @@ export const getById = query({
     return {
       ...conversation,
       vehicle,
+      vehicleImageKey,
       renter,
       owner,
       team,

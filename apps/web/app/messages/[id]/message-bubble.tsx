@@ -3,13 +3,23 @@
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { cn } from "@workspace/ui/lib/utils"
-import { Copy, Edit, Reply, Trash2 } from "lucide-react"
+import { Copy, Edit, FileText, Reply, Trash2 } from "lucide-react"
+import Image from "next/image"
 import type { Id } from "@/lib/convex"
 import { formatTime } from "@/lib/format-time"
+import { r2Url } from "@/lib/r2-url"
 
 interface RepliedToMessage {
   sender?: { name?: string } | null
   content: string
+}
+
+export interface MessageAttachment {
+  type: "image" | "pdf"
+  /** R2 object key */
+  url: string
+  fileName: string
+  fileSize: number
 }
 
 export interface MessageData {
@@ -18,6 +28,7 @@ export interface MessageData {
   content: string
   createdAt: number
   repliedToMessage?: RepliedToMessage | null
+  attachments?: MessageAttachment[] | null
 }
 
 interface MessageBubbleProps {
@@ -162,7 +173,52 @@ export function MessageBubble({
                   <div className="truncate">{message.repliedToMessage.content}</div>
                 </div>
               )}
-              <p className="text-sm">{message.content}</p>
+              {message.attachments && message.attachments.length > 0 && (
+                <div
+                  className={cn(
+                    "grid gap-1.5",
+                    message.attachments.length > 1 ? "grid-cols-2" : "grid-cols-1",
+                    message.content && "mb-2"
+                  )}
+                >
+                  {message.attachments.map((attachment) =>
+                    attachment.type === "image" ? (
+                      <a
+                        className="block overflow-hidden rounded-md"
+                        href={r2Url(attachment.url)}
+                        key={attachment.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        <Image
+                          alt={attachment.fileName}
+                          className="h-40 w-full object-cover transition-opacity hover:opacity-90"
+                          height={160}
+                          src={r2Url(attachment.url)}
+                          width={240}
+                        />
+                      </a>
+                    ) : (
+                      <a
+                        className={cn(
+                          "flex items-center gap-2 rounded-md p-2 text-xs",
+                          isOwn
+                            ? "bg-white/15 hover:bg-white/25"
+                            : "bg-background hover:bg-muted/60"
+                        )}
+                        href={r2Url(attachment.url)}
+                        key={attachment.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{attachment.fileName}</span>
+                      </a>
+                    )
+                  )}
+                </div>
+              )}
+              {message.content && <p className="text-sm">{message.content}</p>}
             </div>
             <p className="mt-1 px-1 text-muted-foreground text-xs">
               {formatTime(message.createdAt)}

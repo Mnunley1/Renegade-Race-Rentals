@@ -14,7 +14,7 @@ import { api } from "@/lib/convex"
 import { handleError, handleErrorWithContext } from "@/lib/error-handler"
 import { ChatHeader } from "./chat-header"
 import { ConfirmationDialogs } from "./confirmation-dialogs"
-import type { MessageData } from "./message-bubble"
+import type { MessageAttachment, MessageData } from "./message-bubble"
 import { MessageInput } from "./message-input"
 import { MessageList } from "./message-list"
 
@@ -29,7 +29,7 @@ function ChatPageContent() {
   const [_hoveredMessage, _setHoveredMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messageInputRef = useRef<HTMLInputElement>(null)
+  const messageInputRef = useRef<HTMLTextAreaElement>(null)
   // Track which conversation has been marked as read to prevent duplicate calls
   const markedAsReadRef = useRef<string | null>(null)
   // Track previous conversationId to detect actual changes
@@ -339,23 +339,43 @@ function ChatPageContent() {
     )
   }
 
-  const handleSendMessage = async () => {
+  // Booking-context for the chat header
+  const activeVehicle = pendingConversation ? pendingVehicle : vehicle
+  const vehicleImageKey =
+    activeVehicle?.images?.find((img: { isPrimary?: boolean }) => img.isPrimary)?.r2Key ??
+    activeVehicle?.images?.[0]?.r2Key ??
+    null
+  const vehicleHref = activeVehicle?._id ? `/vehicles/${activeVehicle._id}` : null
+  const isOwnerInConversation = !!(conversation && user?.id === conversation.ownerId)
+  const bookingHref = conversation?.reservation
+    ? isOwnerInConversation
+      ? "/host/reservations"
+      : "/trips"
+    : null
+
+  const handleSendMessage = async (attachments: MessageAttachment[] = []) => {
     const content = newMessage.trim()
-    if (!content) return
+    const hasAttachments = attachments.length > 0
+    if (!(content || hasAttachments)) return
     if (content.length > MESSAGE_MAX_LENGTH) return
 
+    // Only show an optimistic bubble for text-only sends (attachments resolve on sync)
     const optimisticId = `optimistic-${Date.now()}-${Math.random()}`
-    const optimisticMsg = {
-      _id: optimisticId,
-      content,
-      senderId: user.id,
-      createdAt: Date.now(),
-      status: "sending" as const,
-      replyTo: replyingToMessage as string | undefined,
+    if (content && !hasAttachments) {
+      setOptimisticMessages((prev) => [
+        ...prev,
+        {
+          _id: optimisticId,
+          content,
+          senderId: user.id,
+          createdAt: Date.now(),
+          status: "sending" as const,
+          replyTo: replyingToMessage as string | undefined,
+        },
+      ])
     }
 
-    // Add optimistic message and clear input immediately
-    setOptimisticMessages((prev) => [...prev, optimisticMsg])
+    // Clear input immediately
     setNewMessage("")
     const savedReplyTo = replyingToMessage
     setReplyingToMessage(undefined)
@@ -374,6 +394,8 @@ function ChatPageContent() {
           conversationId: conversationId as Id<"conversations">,
           content,
           replyTo: savedReplyTo,
+          messageType: hasAttachments ? "image" : "text",
+          attachments: hasAttachments ? attachments : undefined,
         })
       } else if (pendingConversation) {
         const result = await sendMessageMutation({
@@ -382,6 +404,8 @@ function ChatPageContent() {
           ownerId: pendingConversation.ownerId,
           content,
           replyTo: savedReplyTo,
+          messageType: hasAttachments ? "image" : "text",
+          attachments: hasAttachments ? attachments : undefined,
         })
 
         if (result?.conversationId) {
@@ -393,10 +417,14 @@ function ChatPageContent() {
       }
       // Optimistic message will be cleared by the useEffect that watches real messages
     } catch (error) {
-      // Mark optimistic message as failed
-      setOptimisticMessages((prev) =>
-        prev.map((msg) => (msg._id === optimisticId ? { ...msg, status: "failed" as const } : msg))
-      )
+      // Mark optimistic message as failed (text-only sends have an optimistic bubble)
+      if (content && !hasAttachments) {
+        setOptimisticMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === optimisticId ? { ...msg, status: "failed" as const } : msg
+          )
+        )
+      }
       handleErrorWithContext(error, {
         action: "send message",
         customMessages: {
@@ -608,12 +636,16 @@ function ChatPageContent() {
           {/* Header */}
           <CardHeader className="border-b py-3">
             <ChatHeader
+              bookingHref={bookingHref}
               coachProfile={pendingConversation ? null : conversation?.coachProfile}
               isPending={!!pendingConversation}
               onArchive={handleArchiveConversation}
               onDelete={handleDeleteConversation}
               participant={pendingConversation ? recipientUser : otherUser}
+              reservation={pendingConversation ? null : conversation?.reservation}
               vehicle={pendingConversation ? pendingVehicle : vehicle}
+              vehicleHref={vehicleHref}
+              vehicleImageKey={vehicleImageKey}
             />
           </CardHeader>
 
@@ -736,6 +768,7 @@ function ChatPageContent() {
                   }
                 : undefined
             }
+            userId={user.id}
             value={newMessage}
             warnThreshold={MESSAGE_WARN_THRESHOLD}
           />
