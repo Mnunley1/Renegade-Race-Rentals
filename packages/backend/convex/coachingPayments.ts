@@ -3,6 +3,7 @@ import Stripe from "stripe"
 import { api, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import { action, internalAction, internalMutation, internalQuery } from "./_generated/server"
+import { checkAdmin } from "./admin"
 import { calculateDaysBetween } from "./dateUtils"
 import { ErrorCode, throwError } from "./errors"
 import { getWebUrl } from "./helpers"
@@ -428,6 +429,50 @@ export const markRefunded = internalMutation({
       paymentStatus: "refunded",
       cancellationReason: args.reason,
       updatedAt: Date.now(),
+    })
+  },
+})
+
+// Admin-initiated full refund for a paid coaching booking (dispute resolution).
+// Reuses the same refund path as the automatic conflict refund.
+export const adminRefundCoachingBooking = action({
+  args: {
+    bookingId: v.id("coachingBookings"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const identity = await checkAdmin(ctx)
+
+    const booking = await ctx.runQuery(api.coachingBookings.getById, { id: args.bookingId })
+    if (!booking) {
+      throwError(ErrorCode.NOT_FOUND, "Coaching booking not found")
+    }
+    if (!booking.stripePaymentIntentId || booking.paymentStatus !== "paid") {
+      throwError(ErrorCode.INVALID_STATUS, "Booking has no captured payment to refund")
+    }
+
+    await ctx.runAction(internal.coachingPayments.refundCoachingBooking, {
+      bookingId: args.bookingId,
+      reason: args.reason,
+    })
+
+    await ctx.runMutation(internal.auditLog.create, {
+      entityType: "coaching_booking",
+      entityId: args.bookingId,
+      action: "admin_refund_coaching_booking",
+      userId: identity.subject,
+      previousState: { paymentStatus: booking.paymentStatus, status: booking.status },
+      newState: { paymentStatus: "refunded", status: "cancelled" },
+      metadata: { reason: args.reason, amount: booking.totalAmount },
+    })
+
+    await ctx.runMutation(internal.notifications.createNotification, {
+      userId: booking.renterId,
+      type: "coaching_cancelled",
+      title: "Coaching payment refunded",
+      message: `Your payment of $${(booking.totalAmount / 100).toFixed(2)} has been refunded in full.`,
+      link: "/trips",
+      metadata: { bookingId: args.bookingId },
     })
   },
 })

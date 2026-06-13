@@ -115,6 +115,70 @@ export function calculateUserReviewStats(reviews: UserReviewInput[]): UserReview
   }
 }
 
+export interface CoachReviewInput {
+  rating: number
+  communication?: number
+  knowledge?: number
+  value?: number
+}
+
+export interface CoachReviewStats {
+  averageRating: number
+  totalReviews: number
+  ratingBreakdown: Record<number, number>
+  categoryAverages: {
+    communication: number
+    knowledge: number
+    value: number
+  }
+}
+
+/** Calculate coach review stats: average, breakdown histogram, category averages */
+export function calculateCoachReviewStats(reviews: CoachReviewInput[]): CoachReviewStats {
+  const categories = ["communication", "knowledge", "value"] as const
+
+  if (reviews.length === 0) {
+    return {
+      averageRating: 0,
+      totalReviews: 0,
+      ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      categoryAverages: { communication: 0, knowledge: 0, value: 0 },
+    }
+  }
+
+  const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
+  const averageRating = totalRating / reviews.length
+
+  const ratingBreakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  for (const review of reviews) {
+    const bucket = ratingBreakdown[review.rating]
+    if (bucket !== undefined) {
+      ratingBreakdown[review.rating] = bucket + 1
+    }
+  }
+
+  const categoryAverages = { communication: 0, knowledge: 0, value: 0 }
+  for (const category of categories) {
+    let total = 0
+    let count = 0
+    for (const review of reviews) {
+      const score = review[category]
+      if (score) {
+        total += score
+        count++
+      }
+    }
+    categoryAverages[category] = count > 0 ? total / count : 0
+  }
+
+  return {
+    averageRating: Math.round(averageRating * 10) / 10,
+    totalReviews: reviews.length,
+    ratingBreakdown,
+    categoryAverages,
+  }
+}
+
 /** Calculate vehicle review stats: average + breakdown (no categories) */
 export function calculateVehicleReviewStats(
   reviews: Array<{ rating: number }>

@@ -794,7 +794,10 @@ export default defineSchema({
       v.literal("user"),
       v.literal("vehicle"),
       v.literal("dispute"),
-      v.literal("damage_invoice")
+      v.literal("damage_invoice"),
+      v.literal("coach_profile"),
+      v.literal("coaching_booking"),
+      v.literal("coaching_review")
     ),
     entityId: v.string(), // ID of the entity being changed
     action: v.string(), // e.g., "status_change", "create", "update", "delete"
@@ -1055,13 +1058,56 @@ export default defineSchema({
     ),
     isActive: v.boolean(),
     viewCount: v.optional(v.number()),
+    // Aggregate rating derived from public coachingReviews (recalculated on submit)
+    rating: v.optional(v.number()),
+    reviewCount: v.optional(v.number()),
+    // Soft vetting: coaches publish immediately as "pending"; admins verify/reject.
+    // The public directory still lists active profiles; "verified" drives a badge.
+    verificationStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
+    ),
+    verifiedAt: v.optional(v.number()),
+    verifiedBy: v.optional(v.string()),
+    moderationNotes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_active", ["isActive"])
     .index("by_location", ["location"])
-    .index("by_racing_type", ["racingType"]),
+    .index("by_racing_type", ["racingType"])
+    .index("by_verification_status", ["verificationStatus"]),
+
+  coachingReviews: defineTable({
+    coachingBookingId: v.id("coachingBookings"),
+    coachProfileId: v.id("coachProfiles"),
+    coachUserId: v.string(),
+    reviewerId: v.string(), // the renter who took the session
+    rating: v.number(), // 1-5 overall
+    // Optional per-category scores (1-5)
+    communication: v.optional(v.number()),
+    knowledge: v.optional(v.number()),
+    value: v.optional(v.number()),
+    title: v.string(),
+    review: v.string(),
+    photos: v.optional(v.array(v.string())),
+    response: v.optional(
+      v.object({
+        text: v.string(),
+        respondedAt: v.number(),
+      })
+    ),
+    isPublic: v.boolean(),
+    isModerated: v.boolean(),
+    moderatedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_booking", ["coachingBookingId"])
+    .index("by_coach_profile", ["coachProfileId"])
+    .index("by_reviewer", ["reviewerId"])
+    .index("by_public", ["isPublic"])
+    .index("by_moderated", ["isModerated"]),
 
   coachAvailability: defineTable({
     coachProfileId: v.id("coachProfiles"),
@@ -1108,6 +1154,14 @@ export default defineSchema({
     stripeCheckoutSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
     confirmedAt: v.optional(v.number()),
+    // Lightweight dispute flag: either party can "report a problem" on a
+    // confirmed/completed booking, surfacing it to admins for refund/dismissal.
+    disputeStatus: v.optional(
+      v.union(v.literal("open"), v.literal("resolved"), v.literal("dismissed"))
+    ),
+    issueReportedAt: v.optional(v.number()),
+    issueReportedBy: v.optional(v.string()),
+    issueReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1118,6 +1172,7 @@ export default defineSchema({
     .index("by_coach_user_status", ["coachUserId", "status"])
     .index("by_renter_status", ["renterId", "status"])
     .index("by_dates", ["startDate", "endDate"])
+    .index("by_dispute_status", ["disputeStatus"])
     .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
     .index("by_stripe_payment_intent", ["stripePaymentIntentId"]),
 

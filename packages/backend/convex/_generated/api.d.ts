@@ -15,6 +15,7 @@ import type * as coachAvailability from "../coachAvailability.js";
 import type * as coachProfiles from "../coachProfiles.js";
 import type * as coachingBookings from "../coachingBookings.js";
 import type * as coachingPayments from "../coachingPayments.js";
+import type * as coachingReviews from "../coachingReviews.js";
 import type * as conversations from "../conversations.js";
 import type * as crons from "../crons.js";
 import type * as damageInvoices from "../damageInvoices.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   coachProfiles: typeof coachProfiles;
   coachingBookings: typeof coachingBookings;
   coachingPayments: typeof coachingPayments;
+  coachingReviews: typeof coachingReviews;
   conversations: typeof conversations;
   crons: typeof crons;
   damageInvoices: typeof damageInvoices;

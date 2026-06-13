@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalMutation, mutation, query } from "./_generated/server"
+import { checkAdmin } from "./admin"
 import { calculateDaysBetween } from "./dateUtils"
 import { ErrorCode, throwError } from "./errors"
 import { rateLimiter } from "./rateLimiter"
@@ -451,6 +452,66 @@ export const complete = mutation({
   },
 })
 
+// Either party can flag a problem with a confirmed/completed session. This sets a
+// lightweight dispute flag surfaced to admins (who can refund or dismiss). No
+// full dispute thread — messaging already exists on the linked conversation.
+export const reportIssue = mutation({
+  args: {
+    bookingId: v.id("coachingBookings"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throwError(ErrorCode.AUTH_REQUIRED, "Not authenticated")
+    }
+
+    await rateLimiter.limit(ctx, "createDispute", { key: identity.subject, throws: true })
+
+    const booking = await ctx.db.get(args.bookingId)
+    if (!booking) {
+      throwError(ErrorCode.NOT_FOUND, "Booking not found")
+    }
+    if (booking.renterId !== identity.subject && booking.coachUserId !== identity.subject) {
+      throwError(ErrorCode.FORBIDDEN, "Not authorized to report an issue on this booking")
+    }
+    if (booking.status !== "confirmed" && booking.status !== "completed") {
+      throwError(
+        ErrorCode.INVALID_STATUS,
+        "Only confirmed or completed sessions can be reported"
+      )
+    }
+    if (booking.disputeStatus === "open") {
+      throwError(ErrorCode.ALREADY_EXISTS, "An issue is already open for this booking")
+    }
+    if (!args.reason.trim()) {
+      throwError(ErrorCode.INVALID_INPUT, "Please describe the problem")
+    }
+
+    const now = Date.now()
+    await ctx.db.patch(args.bookingId, {
+      disputeStatus: "open",
+      issueReportedAt: now,
+      issueReportedBy: identity.subject,
+      issueReason: sanitizeMessage(args.reason),
+      updatedAt: now,
+    })
+
+    const otherPartyId =
+      identity.subject === booking.coachUserId ? booking.renterId : booking.coachUserId
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      userId: otherPartyId,
+      type: "dispute_update",
+      title: "Issue reported on coaching session",
+      message: "A problem was reported with a coaching session. Our team will review it.",
+      link: identity.subject === booking.coachUserId ? "/trips" : "/coach/dashboard",
+      metadata: { bookingId: args.bookingId },
+    })
+
+    return args.bookingId
+  },
+})
+
 // Auto-expire approved bookings the renter never paid for, freeing the dates for
 // other requests. Runs hourly via cron. A booking stays "approved" until payment
 // confirms it, so status === "approved" past the window means it lapsed unpaid.
@@ -585,6 +646,98 @@ export const getUpcomingForCoach = query({
   },
 })
 
+// -------- Admin --------
+
+export const getCoachingBookingsForAdmin = query({
+  args: {
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("confirmed"),
+        v.literal("cancelled"),
+        v.literal("completed"),
+        v.literal("declined"),
+        v.literal("expired")
+      )
+    ),
+    disputeStatus: v.optional(
+      v.union(v.literal("open"), v.literal("resolved"), v.literal("dismissed"))
+    ),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx)
+    const limit = args.limit ?? 100
+
+    let bookings
+    if (args.disputeStatus) {
+      const disputeStatus = args.disputeStatus
+      bookings = await ctx.db
+        .query("coachingBookings")
+        .withIndex("by_dispute_status", (q) => q.eq("disputeStatus", disputeStatus))
+        .order("desc")
+        .take(limit)
+    } else if (args.status) {
+      const status = args.status
+      bookings = await ctx.db
+        .query("coachingBookings")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .order("desc")
+        .take(limit)
+    } else {
+      bookings = await ctx.db.query("coachingBookings").order("desc").take(limit)
+    }
+
+    return await Promise.all(bookings.map((b) => enrichBooking(ctx, b)))
+  },
+})
+
+export const getByIdForAdmin = query({
+  args: { id: v.id("coachingBookings") },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx)
+    const booking = await ctx.db.get(args.id)
+    if (!booking) return null
+    return await enrichBooking(ctx, booking)
+  },
+})
+
+export const resolveCoachingDispute = mutation({
+  args: {
+    bookingId: v.id("coachingBookings"),
+    resolution: v.union(v.literal("resolved"), v.literal("dismissed")),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await checkAdmin(ctx)
+    const booking = await ctx.db.get(args.bookingId)
+    if (!booking) {
+      throwError(ErrorCode.NOT_FOUND, "Booking not found")
+    }
+    if (booking.disputeStatus !== "open") {
+      throwError(ErrorCode.INVALID_STATUS, "No open issue on this booking")
+    }
+
+    await ctx.db.patch(args.bookingId, {
+      disputeStatus: args.resolution,
+      updatedAt: Date.now(),
+    })
+
+    await ctx.runMutation(internal.auditLog.create, {
+      entityType: "coaching_booking",
+      entityId: args.bookingId,
+      action: "resolve_coaching_dispute",
+      userId: identity.subject,
+      previousState: { disputeStatus: "open" },
+      newState: { disputeStatus: args.resolution },
+      metadata: { notes: args.notes },
+    })
+
+    return args.bookingId
+  },
+})
+
 export const getReviewableByUser = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -593,6 +746,14 @@ export const getReviewableByUser = query({
       .withIndex("by_renter_status", (q) => q.eq("renterId", args.userId).eq("status", "completed"))
       .order("desc")
       .collect()
-    return completed
+    return await Promise.all(
+      completed.map(async (booking) => {
+        const review = await ctx.db
+          .query("coachingReviews")
+          .withIndex("by_booking", (q) => q.eq("coachingBookingId", booking._id))
+          .first()
+        return { ...booking, hasReview: review !== null }
+      })
+    )
   },
 })

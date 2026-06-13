@@ -12,6 +12,7 @@ import { useMutation, useQuery } from "convex/react"
 import {
   ArrowLeft,
   Award,
+  BadgeCheck,
   CalendarDays,
   Edit,
   Eye,
@@ -94,10 +95,11 @@ export default function CoachDetailPage({ params }: Props) {
       : "skip"
   )
 
-  const reviews = useQuery(
-    api.reviews.getByUser,
-    coach ? { userId: coach.userId, role: "reviewed" } : "skip"
+  const coachReviews = useQuery(
+    api.coachingReviews.getByCoach,
+    coach ? { coachProfileId: coachId } : "skip"
   )
+  const reviews = coachReviews?.reviews
 
   const incrementView = useMutation(api.coachProfiles.incrementViewCount)
   const toggleVisibility = useMutation(api.coachProfiles.toggleVisibility)
@@ -116,11 +118,9 @@ export default function CoachDetailPage({ params }: Props) {
     }
   }, [coach, coachId, incrementView])
 
-  const averageRating = useMemo(() => {
-    if (!reviews || reviews.length === 0) return null
-    const total = reviews.reduce((sum, r) => sum + r.rating, 0)
-    return total / reviews.length
-  }, [reviews])
+  const averageRating =
+    coachReviews && coachReviews.stats.totalReviews > 0 ? coachReviews.stats.averageRating : null
+  const reviewCount = coachReviews?.stats.totalReviews ?? 0
 
   // Dates the coach has marked unavailable, and dates held by confirmed bookings.
   const blockedDates = useMemo<Date[]>(() => {
@@ -302,8 +302,15 @@ export default function CoachDetailPage({ params }: Props) {
                 {averageRating !== null && (
                   <span className="flex items-center gap-1">
                     <Star className="size-4 fill-yellow-400 text-yellow-400" />
-                    {averageRating.toFixed(1)} ({reviews?.length} reviews)
+                    {averageRating.toFixed(1)} ({reviewCount}{" "}
+                    {reviewCount === 1 ? "review" : "reviews"})
                   </span>
+                )}
+                {coach.verificationStatus === "verified" && (
+                  <Badge className="gap-1" variant="secondary">
+                    <BadgeCheck className="size-3.5 text-primary" />
+                    Verified
+                  </Badge>
                 )}
                 {!coach.isActive && <Badge variant="secondary">Profile hidden</Badge>}
               </div>

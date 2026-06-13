@@ -17,10 +17,12 @@ import {
   GraduationCap,
   Search,
   Send,
+  Star,
   XCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { CoachReviewDialog } from "@/components/coach-review-dialog"
 import { TripCard } from "@/components/trip-card"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
@@ -177,6 +179,101 @@ function TripList({
   )
 }
 
+const coachingStatusVariant: Record<string, { label: string; className: string }> = {
+  pending: { label: "Awaiting coach", className: "" },
+  approved: {
+    label: "Approved — pay to confirm",
+    className: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
+  },
+  confirmed: {
+    label: "Confirmed",
+    className: "bg-green-500/15 text-green-900 dark:text-green-200",
+  },
+  completed: { label: "Completed", className: "" },
+  cancelled: { label: "Cancelled", className: "" },
+  declined: { label: "Declined", className: "" },
+  expired: { label: "Expired — not paid in time", className: "" },
+}
+
+function coachingSessionLabel(b: any) {
+  if (b.sessionType === "hourly") return `${b.hours}-hour session`
+  if (b.sessionType === "half_day") return "Half-day session"
+  return "Full-day session"
+}
+
+function CoachingBookingRow({ booking }: { booking: any }) {
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const variant = coachingStatusVariant[booking.status] || coachingStatusVariant.pending
+  const isCompleted = booking.status === "completed"
+
+  const existingReview = useQuery(
+    api.coachingReviews.getByBooking,
+    isCompleted ? { bookingId: booking._id as Id<"coachingBookings"> } : "skip"
+  )
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <GraduationCap className="size-4 text-muted-foreground" />
+            <Link
+              className="font-semibold hover:underline"
+              href={`/coaches/${booking.coachProfileId}`}
+            >
+              {booking.coach?.name || "Coach"}
+            </Link>
+            <Badge className={variant?.className} variant="outline">
+              {variant?.label}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {coachingSessionLabel(booking)} ·{" "}
+            {new Date(`${booking.startDate}T00:00:00`).toLocaleDateString()}
+            {booking.startTime ? ` · ${booking.startTime}` : ""}
+          </p>
+          {booking.eventName && (
+            <p className="text-muted-foreground text-sm">{booking.eventName}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-semibold">${(booking.totalAmount / 100).toFixed(0)}</span>
+          {booking.status === "approved" && (
+            <Button asChild size="sm">
+              <Link href={`/checkout/pay-coaching?bookingId=${booking._id}`}>
+                <CreditCard className="mr-2 size-4" />
+                Pay
+              </Link>
+            </Button>
+          )}
+          {isCompleted &&
+            (existingReview ? (
+              <span className="flex items-center gap-1 text-muted-foreground text-sm">
+                <Star className="size-4 fill-primary text-primary" />
+                Reviewed
+              </span>
+            ) : (
+              existingReview === null && (
+                <>
+                  <Button onClick={() => setReviewOpen(true)} size="sm" variant="outline">
+                    <Star className="mr-2 size-4" />
+                    Leave a review
+                  </Button>
+                  <CoachReviewDialog
+                    bookingId={booking._id as Id<"coachingBookings">}
+                    coachName={booking.coach?.name || "your coach"}
+                    onOpenChange={setReviewOpen}
+                    open={reviewOpen}
+                  />
+                </>
+              )
+            ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function CoachingBookingsList({ coachingData }: { coachingData: any[] | undefined }) {
   if (coachingData === undefined) {
     return <p className="py-12 text-center text-muted-foreground">Loading coaching sessions…</p>
@@ -191,69 +288,11 @@ function CoachingBookingsList({ coachingData }: { coachingData: any[] | undefine
     )
   }
 
-  const statusVariant: Record<string, { label: string; className: string }> = {
-    pending: { label: "Awaiting coach", className: "" },
-    approved: {
-      label: "Approved — pay to confirm",
-      className: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
-    },
-    confirmed: {
-      label: "Confirmed",
-      className: "bg-green-500/15 text-green-900 dark:text-green-200",
-    },
-    completed: { label: "Completed", className: "" },
-    cancelled: { label: "Cancelled", className: "" },
-    declined: { label: "Declined", className: "" },
-    expired: { label: "Expired — not paid in time", className: "" },
-  }
-
-  const sessionLabel = (b: any) => {
-    if (b.sessionType === "hourly") return `${b.hours}-hour session`
-    if (b.sessionType === "half_day") return "Half-day session"
-    return "Full-day session"
-  }
-
   return (
     <div className="space-y-3">
-      {coachingData.map((b) => {
-        const variant = statusVariant[b.status] || statusVariant.pending
-        return (
-          <Card key={b._id}>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <GraduationCap className="size-4 text-muted-foreground" />
-                  <Link
-                    className="font-semibold hover:underline"
-                    href={`/coaches/${b.coachProfileId}`}
-                  >
-                    {b.coach?.name || "Coach"}
-                  </Link>
-                  <Badge className={variant?.className} variant="outline">
-                    {variant?.label}
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  {sessionLabel(b)} · {new Date(`${b.startDate}T00:00:00`).toLocaleDateString()}
-                  {b.startTime ? ` · ${b.startTime}` : ""}
-                </p>
-                {b.eventName && <p className="text-muted-foreground text-sm">{b.eventName}</p>}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold">${(b.totalAmount / 100).toFixed(0)}</span>
-                {b.status === "approved" && (
-                  <Button asChild size="sm">
-                    <Link href={`/checkout/pay-coaching?bookingId=${b._id}`}>
-                      <CreditCard className="mr-2 size-4" />
-                      Pay
-                    </Link>
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })}
+      {coachingData.map((b) => (
+        <CoachingBookingRow booking={b} key={b._id} />
+      ))}
     </div>
   )
 }

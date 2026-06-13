@@ -1,6 +1,8 @@
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import type { Doc } from "./_generated/dataModel"
 import { mutation, query } from "./_generated/server"
+import { checkAdmin } from "./admin"
 import { ErrorCode, throwError } from "./errors"
 import { rateLimiter } from "./rateLimiter"
 import { sanitizeMessage, sanitizeShortText } from "./sanitize"
@@ -103,6 +105,7 @@ export const create = mutation({
       socialLinks: args.socialLinks,
       isActive: true,
       viewCount: 0,
+      verificationStatus: "pending",
       createdAt: now,
       updatedAt: now,
     })
@@ -311,5 +314,170 @@ export const incrementViewCount = mutation({
     await ctx.db.patch(args.profileId, {
       viewCount: (profile.viewCount ?? 0) + 1,
     })
+  },
+})
+
+// -------- Admin vetting --------
+
+async function enrichForAdmin(ctx: any, profile: Doc<"coachProfiles">) {
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_external_id", (q: any) => q.eq("externalId", profile.userId))
+    .first()
+  return {
+    ...profile,
+    user: user
+      ? {
+          name: user.name as string,
+          email: user.email as string | undefined,
+          avatarUrl: user.profileImage as string | undefined,
+        }
+      : { name: "Unknown", email: undefined, avatarUrl: undefined },
+  }
+}
+
+export const getCoachesForAdmin = query({
+  args: {
+    verificationStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
+    ),
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx)
+    const limit = args.limit ?? 100
+
+    let profiles: Doc<"coachProfiles">[]
+    if (args.verificationStatus) {
+      const verificationStatus = args.verificationStatus
+      profiles = await ctx.db
+        .query("coachProfiles")
+        .withIndex("by_verification_status", (q) =>
+          q.eq("verificationStatus", verificationStatus)
+        )
+        .order("desc")
+        .take(limit)
+    } else {
+      profiles = await ctx.db.query("coachProfiles").order("desc").take(limit)
+    }
+
+    const enriched = await Promise.all(profiles.map((p) => enrichForAdmin(ctx, p)))
+
+    if (args.search) {
+      const term = args.search.toLowerCase()
+      return enriched.filter(
+        (p) =>
+          p.user.name?.toLowerCase().includes(term) ||
+          p.user.email?.toLowerCase().includes(term) ||
+          p.location.toLowerCase().includes(term) ||
+          p.headline?.toLowerCase().includes(term)
+      )
+    }
+    return enriched
+  },
+})
+
+export const getPendingCoaches = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx)
+    const profiles = await ctx.db
+      .query("coachProfiles")
+      .withIndex("by_verification_status", (q) => q.eq("verificationStatus", "pending"))
+      .order("desc")
+      .take(args.limit ?? 50)
+    return await Promise.all(profiles.map((p) => enrichForAdmin(ctx, p)))
+  },
+})
+
+export const getByIdForAdmin = query({
+  args: { profileId: v.id("coachProfiles") },
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) return null
+    return await enrichForAdmin(ctx, profile)
+  },
+})
+
+export const verifyCoach = mutation({
+  args: { profileId: v.id("coachProfiles"), notes: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await checkAdmin(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) {
+      throwError(ErrorCode.NOT_FOUND, "Coach profile not found")
+    }
+    await ctx.db.patch(args.profileId, {
+      verificationStatus: "verified",
+      verifiedAt: Date.now(),
+      verifiedBy: identity.subject,
+      moderationNotes: args.notes ? sanitizeMessage(args.notes) : profile.moderationNotes,
+      updatedAt: Date.now(),
+    })
+    await ctx.runMutation(internal.auditLog.create, {
+      entityType: "coach_profile",
+      entityId: args.profileId,
+      action: "verify_coach",
+      userId: identity.subject,
+      previousState: { verificationStatus: profile.verificationStatus ?? "pending" },
+      newState: { verificationStatus: "verified" },
+      metadata: { coachUserId: profile.userId, notes: args.notes },
+    })
+    return args.profileId
+  },
+})
+
+export const rejectCoach = mutation({
+  args: { profileId: v.id("coachProfiles"), notes: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await checkAdmin(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) {
+      throwError(ErrorCode.NOT_FOUND, "Coach profile not found")
+    }
+    await ctx.db.patch(args.profileId, {
+      verificationStatus: "rejected",
+      moderationNotes: args.notes ? sanitizeMessage(args.notes) : profile.moderationNotes,
+      updatedAt: Date.now(),
+    })
+    await ctx.runMutation(internal.auditLog.create, {
+      entityType: "coach_profile",
+      entityId: args.profileId,
+      action: "reject_coach",
+      userId: identity.subject,
+      previousState: { verificationStatus: profile.verificationStatus ?? "pending" },
+      newState: { verificationStatus: "rejected" },
+      metadata: { coachUserId: profile.userId, notes: args.notes },
+    })
+    return args.profileId
+  },
+})
+
+// Hard takedown: hide the profile from the directory (sets isActive false).
+export const takedownCoach = mutation({
+  args: { profileId: v.id("coachProfiles"), notes: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const identity = await checkAdmin(ctx)
+    const profile = await ctx.db.get(args.profileId)
+    if (!profile) {
+      throwError(ErrorCode.NOT_FOUND, "Coach profile not found")
+    }
+    await ctx.db.patch(args.profileId, {
+      isActive: false,
+      moderationNotes: args.notes ? sanitizeMessage(args.notes) : profile.moderationNotes,
+      updatedAt: Date.now(),
+    })
+    await ctx.runMutation(internal.auditLog.create, {
+      entityType: "coach_profile",
+      entityId: args.profileId,
+      action: "takedown_coach",
+      userId: identity.subject,
+      previousState: { isActive: profile.isActive },
+      newState: { isActive: false },
+      metadata: { coachUserId: profile.userId, notes: args.notes },
+    })
+    return args.profileId
   },
 })
