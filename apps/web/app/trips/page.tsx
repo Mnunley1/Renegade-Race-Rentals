@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { CoachCancelDialog } from "@/components/coach-cancel-dialog"
 import { CoachReviewDialog } from "@/components/coach-review-dialog"
 import { TripCard } from "@/components/trip-card"
 import type { Id } from "@/lib/convex"
@@ -203,8 +204,11 @@ function coachingSessionLabel(b: any) {
 
 function CoachingBookingRow({ booking }: { booking: any }) {
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
   const variant = coachingStatusVariant[booking.status] || coachingStatusVariant.pending
   const isCompleted = booking.status === "completed"
+  const isCancellable =
+    booking.status === "pending" || booking.status === "approved" || booking.status === "confirmed"
 
   const existingReview = useQuery(
     api.coachingReviews.getByBooking,
@@ -245,6 +249,24 @@ function CoachingBookingRow({ booking }: { booking: any }) {
                 Pay
               </Link>
             </Button>
+          )}
+          {isCancellable && (
+            <>
+              <Button onClick={() => setCancelOpen(true)} size="sm" variant="ghost">
+                Cancel
+              </Button>
+              <CoachCancelDialog
+                actorRole="renter"
+                bookingId={booking._id as Id<"coachingBookings">}
+                onOpenChange={setCancelOpen}
+                open={cancelOpen}
+                paymentStatus={booking.paymentStatus}
+                startDate={booking.startDate}
+                startTime={booking.startTime}
+                status={booking.status}
+                totalAmount={booking.totalAmount}
+              />
+            </>
           )}
           {isCompleted &&
             (existingReview ? (

@@ -30,6 +30,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { CoachCancelDialog } from "@/components/coach-cancel-dialog"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
 
@@ -79,6 +80,9 @@ export default function CoachDashboardPage() {
 
   const approve = useMutation(api.coachingBookings.approve)
   const decline = useMutation(api.coachingBookings.decline)
+
+  // biome-ignore lint/suspicious/noExplicitAny: enriched booking shape from Convex
+  const [cancelBooking, setCancelBooking] = useState<any | null>(null)
 
   const fetchConnectStatus = useAction(api.stripe.getConnectAccountStatus)
   const startOnboarding = useAction(api.stripe.createConnectAccount)
@@ -421,6 +425,9 @@ export default function CoachDashboardPage() {
                         Message
                       </Link>
                     </Button>
+                    <Button onClick={() => setCancelBooking(b)} size="sm" variant="ghost">
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -428,6 +435,20 @@ export default function CoachDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {cancelBooking && (
+        <CoachCancelDialog
+          actorRole="coach"
+          bookingId={cancelBooking._id}
+          onOpenChange={(o) => !o && setCancelBooking(null)}
+          open={true}
+          paymentStatus={cancelBooking.paymentStatus}
+          startDate={cancelBooking.startDate}
+          startTime={cancelBooking.startTime}
+          status={cancelBooking.status}
+          totalAmount={cancelBooking.totalAmount}
+        />
+      )}
     </div>
   )
 }
