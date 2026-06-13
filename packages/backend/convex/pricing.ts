@@ -56,3 +56,36 @@ export function datesOverlap(startA: string, endA: string, startB: string, endB:
 export function calculateRefundAmount(paymentAmount: number, percentage: number): number {
   return Math.round(paymentAmount * (percentage / 100))
 }
+
+const HH_MM_RE = /^\d{2}:\d{2}$/
+
+/**
+ * Coaching cancellation refund policy. A coaching session is a scheduled
+ * commitment that holds the coach's calendar, so:
+ *  - the coach cancelling always refunds the renter in full;
+ *  - the renter cancelling is refundable only when it's at least `minNoticeHours`
+ *    (default 24h) before the session starts — otherwise the coach keeps the
+ *    payment for the slot they held.
+ * `startTime` is "HH:MM" (24h) for hourly sessions; day-length sessions assume
+ * the start of the day. Dates/times are interpreted as UTC, matching how
+ * bookings are stored. `now` is a timestamp (ms).
+ */
+export function isCoachingCancellationRefundable(params: {
+  cancelledByCoach: boolean
+  startDate: string
+  startTime?: string
+  now: number
+  minNoticeHours?: number
+}): boolean {
+  if (params.cancelledByCoach) {
+    return true
+  }
+  const minNoticeMs = (params.minNoticeHours ?? 24) * 60 * 60 * 1000
+  const time = params.startTime && HH_MM_RE.test(params.startTime) ? params.startTime : "00:00"
+  const sessionStart = Date.parse(`${params.startDate}T${time}:00Z`)
+  if (Number.isNaN(sessionStart)) {
+    // Unparseable date — be lenient and allow the refund rather than trap funds.
+    return true
+  }
+  return params.now <= sessionStart - minNoticeMs
+}

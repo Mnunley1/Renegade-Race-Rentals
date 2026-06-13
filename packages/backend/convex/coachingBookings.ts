@@ -4,6 +4,7 @@ import { internalMutation, mutation, query } from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDaysBetween } from "./dateUtils"
 import { ErrorCode, throwError } from "./errors"
+import { isCoachingCancellationRefundable } from "./pricing"
 import { rateLimiter } from "./rateLimiter"
 import { sanitizeMessage, sanitizeShortText } from "./sanitize"
 
@@ -388,6 +389,10 @@ export const cancel = mutation({
       throwError(ErrorCode.INVALID_STATUS, "Booking cannot be cancelled in current status")
     }
 
+    // Capture the pre-cancel state to decide on a refund (status flips below).
+    const wasPaid = booking.status === "confirmed" && booking.paymentStatus === "paid"
+    const cancellerIsCoach = identity.subject === booking.coachUserId
+
     await ctx.db.patch(args.bookingId, {
       status: "cancelled",
       cancellationReason: args.cancellationReason
@@ -398,7 +403,6 @@ export const cancel = mutation({
 
     const otherPartyId =
       identity.subject === booking.coachUserId ? booking.renterId : booking.coachUserId
-    const cancellerIsCoach = identity.subject === booking.coachUserId
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       userId: otherPartyId,
@@ -408,6 +412,45 @@ export const cancel = mutation({
       link: cancellerIsCoach ? "/trips" : "/coach/dashboard",
       metadata: { bookingId: args.bookingId },
     })
+
+    // Refund a paid session per the cancellation policy: the coach cancelling
+    // always refunds; the renter cancelling only refunds with 24h+ notice.
+    if (wasPaid) {
+      const refundable = isCoachingCancellationRefundable({
+        cancelledByCoach: cancellerIsCoach,
+        startDate: booking.startDate,
+        startTime: booking.startTime,
+        now: Date.now(),
+      })
+
+      if (refundable) {
+        await ctx.scheduler.runAfter(0, internal.coachingPayments.refundCoachingBooking, {
+          bookingId: args.bookingId,
+          reason: cancellerIsCoach
+            ? "The coach cancelled this session — refunded in full."
+            : "Session cancelled with 24h+ notice — refunded in full.",
+        })
+        await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+          userId: booking.renterId,
+          type: "coaching_cancelled",
+          title: "Coaching payment refunded",
+          message: `Your payment of $${(booking.totalAmount / 100).toFixed(2)} is being refunded in full.`,
+          link: "/trips",
+          metadata: { bookingId: args.bookingId },
+        })
+      } else {
+        // Renter cancelled inside the notice window — coach keeps the payment.
+        await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+          userId: booking.renterId,
+          type: "coaching_cancelled",
+          title: "Coaching session cancelled — no refund",
+          message:
+            "You cancelled within 24 hours of the session, so per the cancellation policy this booking is non-refundable.",
+          link: "/trips",
+          metadata: { bookingId: args.bookingId },
+        })
+      }
+    }
 
     return args.bookingId
   },

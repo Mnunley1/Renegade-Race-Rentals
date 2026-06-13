@@ -1,7 +1,7 @@
 // @vitest-environment edge-runtime
 import { convexTest } from "convex-test"
 import { describe, expect, it, vi } from "vitest"
-import { internal } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import schema from "./schema"
 
@@ -148,5 +148,104 @@ describe("coaching payments — handlePaymentSuccess", () => {
     expect(booking?.status).not.toBe("confirmed")
     expect(refundsCreate).toHaveBeenCalled()
     expect(booking?.paymentStatus).toBe("refunded")
+  })
+})
+
+async function seedPaidBooking(
+  t: ReturnType<typeof convexTest>,
+  overrides: Record<string, unknown> = {}
+) {
+  return (await t.run(async (ctx) => {
+    const coachProfileId = await ctx.db.insert("coachProfiles", {
+      userId: "coach_1",
+      bio: "Test coach",
+      specialties: ["HPDE"],
+      hourlyRate: 15000,
+      location: "Austin, TX",
+      isActive: true,
+      verificationStatus: "verified",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    return await ctx.db.insert("coachingBookings", {
+      coachProfileId,
+      coachUserId: "coach_1",
+      renterId: "renter_1",
+      startDate: "2030-09-01",
+      endDate: "2030-09-01",
+      sessionType: "hourly",
+      hours: 2,
+      totalDays: 1,
+      rate: 15000,
+      totalAmount: 30000,
+      status: "confirmed",
+      paymentStatus: "paid",
+      stripePaymentIntentId: "pi_paid_1",
+      confirmedAt: Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      ...overrides,
+    })
+  })) as Id<"coachingBookings">
+}
+
+describe("coaching cancellation refunds", () => {
+  it("refunds the renter in full when the coach cancels a paid session", async () => {
+    vi.useFakeTimers()
+    refundsCreate.mockClear()
+    const t = convexTest(schema, modules)
+    const bookingId = await seedPaidBooking(t)
+
+    const asCoach = t.withIdentity({ subject: "coach_1" })
+    await asCoach.mutation(api.coachingBookings.cancel, { bookingId })
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers)
+    vi.useRealTimers()
+
+    const booking = await t.run((ctx) => ctx.db.get(bookingId))
+    expect(refundsCreate).toHaveBeenCalled()
+    expect(booking?.status).toBe("cancelled")
+    expect(booking?.paymentStatus).toBe("refunded")
+  })
+
+  it("refunds the renter when they cancel with more than 24h notice", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2030-08-01T00:00:00Z"))
+    refundsCreate.mockClear()
+    const t = convexTest(schema, modules)
+    const bookingId = await seedPaidBooking(t, { startDate: "2030-09-01", endDate: "2030-09-01" })
+
+    const asRenter = t.withIdentity({ subject: "renter_1" })
+    await asRenter.mutation(api.coachingBookings.cancel, { bookingId })
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers)
+    vi.useRealTimers()
+
+    const booking = await t.run((ctx) => ctx.db.get(bookingId))
+    expect(refundsCreate).toHaveBeenCalled()
+    expect(booking?.paymentStatus).toBe("refunded")
+  })
+
+  it("does not refund when the renter cancels inside the 24h window", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2030-09-01T08:00:00Z"))
+    refundsCreate.mockClear()
+    const t = convexTest(schema, modules)
+    const bookingId = await seedPaidBooking(t, {
+      startDate: "2030-09-01",
+      endDate: "2030-09-01",
+      startTime: "10:00",
+    })
+
+    const asRenter = t.withIdentity({ subject: "renter_1" })
+    await asRenter.mutation(api.coachingBookings.cancel, { bookingId })
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers)
+    vi.useRealTimers()
+
+    const booking = await t.run((ctx) => ctx.db.get(bookingId))
+    expect(refundsCreate).not.toHaveBeenCalled()
+    expect(booking?.status).toBe("cancelled")
+    expect(booking?.paymentStatus).toBe("paid")
   })
 })
