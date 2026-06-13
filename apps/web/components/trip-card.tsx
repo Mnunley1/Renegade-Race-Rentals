@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@workspace/ui/components/alert-dialog"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { cn } from "@workspace/ui/lib/utils"
@@ -166,153 +167,189 @@ export function TripCard({
     }
   }
 
+  const vehicleUrl = `/vehicles/${vehicleId}`
+  const isPastOrClosed = status === "completed" || status === "cancelled" || status === "declined"
+
   return (
     <Card
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-xl md:flex-row",
+        "group overflow-hidden border bg-card transition-all duration-300 hover:border-foreground/15 hover:shadow-[0_14px_32px_-16px_rgba(0,0,0,0.22)]",
         className
       )}
       {...props}
     >
-      {/* Vehicle Image */}
-      <div className="relative h-48 w-full shrink-0 overflow-hidden bg-muted md:h-auto md:w-2/5 lg:w-2/5">
-        {vehicleImage ? (
-          <Image
-            alt={vehicleName}
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
-            fill
-            sizes="(max-width: 768px) 100vw, 40vw"
-            src={vehicleImage}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-muted">
-            <Car className="size-16 text-muted-foreground" />
+      <div className="flex flex-col sm:flex-row">
+        {/* Vehicle Image */}
+        <div className="relative h-44 w-full shrink-0 overflow-hidden bg-muted sm:h-auto sm:w-60 md:w-72">
+          {vehicleImage ? (
+            <Image
+              alt={vehicleName}
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              fill
+              sizes="(max-width: 640px) 100vw, 288px"
+              src={vehicleImage}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-muted">
+              <Car className="size-14 text-muted-foreground/50" />
+            </div>
+          )}
+          {/* Status Badge */}
+          <div className="absolute top-3 left-3 z-10">
+            <StatusBadge
+              className="border border-white/15 bg-black/55 text-white backdrop-blur-md"
+              status={status}
+            />
           </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100 md:bg-gradient-to-r md:from-black/80 md:via-black/40 md:to-transparent" />
-
-        {/* Status Badge */}
-        <div className="absolute top-3 left-3 z-10">
-          <StatusBadge className="bg-background/90 backdrop-blur-sm" status={status} />
         </div>
-      </div>
 
-      <CardContent className="flex flex-1 flex-col p-6 md:p-6">
-        <div className="flex flex-1 flex-col space-y-4">
-          {/* Vehicle Name */}
-          <div>
-            <h3 className="font-bold text-xl transition-colors group-hover:text-primary">
-              {vehicleYear} {vehicleMake} {vehicleModel}
-            </h3>
-            <div className="mt-1 flex items-center gap-2 text-muted-foreground text-sm">
-              <MapPin className="size-3" />
-              <span>{location}</span>
+        <CardContent className="flex flex-1 flex-col gap-3 p-5">
+          {/* Title + price */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate font-semibold text-lg tracking-tight transition-colors group-hover:text-primary">
+                {vehicleYear} {vehicleMake} {vehicleModel}
+              </h3>
+              <div className="mt-1 flex items-center gap-1.5 text-muted-foreground text-sm">
+                <MapPin className="size-3.5 shrink-0" />
+                <span className="truncate">{location}</span>
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="font-bold text-foreground text-lg tracking-tight">
+                ${totalAmount.toLocaleString()}
+              </div>
+              <div className="text-muted-foreground text-xs">
+                ${dailyRate.toLocaleString()}/day · {totalDays}d
+              </div>
             </div>
           </div>
 
-          {/* Trip Dates */}
-          <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
-            <div className="flex items-start gap-3">
-              <Calendar className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div className="flex-1">
-                <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  Trip Dates
-                </div>
-                <div className="mt-1 font-semibold">
-                  {formatDate(startDate)} - {formatDate(endDate)}
-                </div>
-                <div className="mt-1 text-muted-foreground text-sm">
-                  {totalDays} {totalDays === 1 ? "day" : "days"}
-                </div>
-              </div>
-            </div>
-
+          {/* Dates + times inline */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground text-sm">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="size-3.5 shrink-0 text-primary" />
+              {formatDate(startDate)} – {formatDate(endDate)} · {totalDays}{" "}
+              {totalDays === 1 ? "day" : "days"}
+            </span>
             {(pickupTime || dropoffTime) && (
-              <div className="flex items-start gap-3 border-t pt-3">
-                <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
-                <div className="flex-1 space-y-1">
-                  {pickupTime && (
-                    <div className="text-sm">
-                      <span className="font-medium">Pickup:</span>{" "}
-                      <span className="text-muted-foreground">{formatTime(pickupTime)}</span>
-                    </div>
-                  )}
-                  {dropoffTime && (
-                    <div className="text-sm">
-                      <span className="font-medium">Dropoff:</span>{" "}
-                      <span className="text-muted-foreground">{formatTime(dropoffTime)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <span className="flex items-center gap-1.5">
+                <Clock className="size-3.5 shrink-0 text-primary" />
+                {pickupTime ? formatTime(pickupTime) : "—"}
+                {dropoffTime ? ` – ${formatTime(dropoffTime)}` : ""}
+              </span>
             )}
           </div>
 
-          {/* Add-ons */}
+          {/* Add-ons as quiet chips */}
           {addOns && addOns.length > 0 && (
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                Add-ons
-              </div>
-              <div className="space-y-1">
-                {addOns.map((addOn, index) => (
-                  <div className="flex items-center justify-between text-sm" key={index}>
-                    <span>{addOn.name}</span>
-                    <span className="font-medium">${addOn.price}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-1.5">
+              {addOns.slice(0, 3).map((addOn, index) => (
+                <Badge
+                  className="border-transparent bg-muted font-normal text-muted-foreground"
+                  key={index}
+                  variant="secondary"
+                >
+                  {addOn.name}
+                </Badge>
+              ))}
+              {addOns.length > 3 && (
+                <Badge
+                  className="border-transparent bg-muted font-normal text-muted-foreground"
+                  variant="secondary"
+                >
+                  +{addOns.length - 3}
+                </Badge>
+              )}
             </div>
           )}
 
-          {/* Pricing */}
-          <div className="mt-auto flex items-center justify-between border-t pt-4">
-            <div>
-              <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                Total Amount
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text font-bold text-2xl text-transparent">
-                  ${totalAmount.toLocaleString()}
-                </span>
-              </div>
-              <div className="mt-1 text-muted-foreground text-xs">
-                ${dailyRate.toLocaleString()}/day
-              </div>
+          {/* Damage invoice status (completed only) */}
+          {status === "completed" && activeDamageInvoice && (
+            <div className="rounded-lg border p-3">
+              {activeDamageInvoice.status === "pending_review" && (
+                <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span className="font-medium">Damage claim filed</span>
+                  <span className="ml-auto text-muted-foreground">
+                    ${(activeDamageInvoice.amount / 100).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {activeDamageInvoice.status === "payment_pending" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-orange-700 text-sm dark:text-orange-400">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    <span className="font-medium">Damage payment required</span>
+                    <span className="ml-auto font-bold">
+                      ${(activeDamageInvoice.amount / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  {activeDamageInvoice.stripeCheckoutUrl && (
+                    <Button asChild className="w-full" size="sm" variant="destructive">
+                      <a href={activeDamageInvoice.stripeCheckoutUrl}>
+                        <CreditCard className="mr-2 size-4" />
+                        Pay now
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              )}
+              {activeDamageInvoice.status === "paid" && (
+                <div className="flex items-center gap-2 text-green-700 text-sm dark:text-green-400">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span className="font-medium">Damage charge paid</span>
+                  <span className="ml-auto text-muted-foreground">
+                    ${(activeDamageInvoice.amount / 100).toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Actions */}
-          <div className="space-y-2">
-            <Button asChild className="w-full" onClick={(e) => e.stopPropagation()}>
-              <Link href={`/vehicles/${vehicleId}`}>
-                <Car className="mr-2 size-4" />
-                View Vehicle Details
-                <ChevronRight className="ml-2 size-4" />
-              </Link>
-            </Button>
-
-            {/* Pay Now Button for approved reservations */}
+          <div className="mt-auto flex flex-wrap items-center gap-2 border-t pt-4">
             {status === "approved" && (
-              <Button asChild className="w-full" onClick={(e) => e.stopPropagation()}>
+              <Button asChild size="sm">
                 <Link href={`/checkout/pay?reservationId=${reservationId}`}>
                   <CreditCard className="mr-2 size-4" />
-                  Pay Now
+                  Pay now
                 </Link>
               </Button>
             )}
+            {status === "completed" && (
+              <Button asChild size="sm">
+                <Link href={`/trips/review/${reservationId}`}>Write a review</Link>
+              </Button>
+            )}
+            {status === "confirmed" && (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/trips/return/${reservationId}`}>Return vehicle</Link>
+              </Button>
+            )}
+            <Button asChild size="sm" variant="outline">
+              <Link href={vehicleUrl}>
+                {isPastOrClosed ? "Book again" : "View details"}
+                <ChevronRight className="ml-1.5 size-4" />
+              </Link>
+            </Button>
+            {status === "completed" && (
+              <Button asChild className="text-muted-foreground" size="sm" variant="ghost">
+                <Link href={`/trips/dispute/${reservationId}`}>File dispute</Link>
+              </Button>
+            )}
 
-            {/* Cancel Button for pending/approved/confirmed reservations */}
+            {/* Cancel — quiet, with refund-aware confirmation */}
             {canCancel && (
               <AlertDialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
-                    className="w-full"
-                    onClick={(e) => e.stopPropagation()}
-                    variant="destructive"
+                    className="ml-auto text-destructive hover:text-destructive"
+                    size="sm"
+                    variant="ghost"
                   >
-                    <XCircle className="mr-2 size-4" />
-                    Cancel Reservation
+                    <XCircle className="mr-1.5 size-4" />
+                    Cancel
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -390,93 +427,9 @@ export function TripCard({
                 </AlertDialogContent>
               </AlertDialog>
             )}
-
-            {status === "confirmed" && (
-              <Button
-                asChild
-                className="w-full"
-                onClick={(e) => e.stopPropagation()}
-                variant="outline"
-              >
-                <Link href={`/trips/return/${reservationId}`}>Return Vehicle</Link>
-              </Button>
-            )}
-            {status === "completed" && (
-              <>
-                {/* Damage Invoice Status */}
-                {activeDamageInvoice && (
-                  <div className="rounded-lg border p-3">
-                    {activeDamageInvoice.status === "pending_review" && (
-                      <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-                        <AlertTriangle className="size-4" />
-                        <span className="font-medium text-sm">Damage Claim Filed</span>
-                        <span className="ml-auto text-muted-foreground text-sm">
-                          ${(activeDamageInvoice.amount / 100).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {activeDamageInvoice.status === "payment_pending" && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
-                          <AlertTriangle className="size-4" />
-                          <span className="font-medium text-sm">Damage Payment Required</span>
-                          <span className="ml-auto font-bold">
-                            ${(activeDamageInvoice.amount / 100).toFixed(2)}
-                          </span>
-                        </div>
-                        {activeDamageInvoice.stripeCheckoutUrl && (
-                          <Button
-                            asChild
-                            className="w-full"
-                            onClick={(e) => e.stopPropagation()}
-                            size="sm"
-                            variant="destructive"
-                          >
-                            <a href={activeDamageInvoice.stripeCheckoutUrl}>
-                              <CreditCard className="mr-2 size-4" />
-                              Pay Now
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                    {activeDamageInvoice.status === "paid" && (
-                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                        <AlertTriangle className="size-4" />
-                        <span className="font-medium text-sm">Damage Charge Paid</span>
-                        <span className="ml-auto text-muted-foreground text-sm">
-                          ${(activeDamageInvoice.amount / 100).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    asChild
-                    className="flex-1"
-                    onClick={(e) => e.stopPropagation()}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Link href={`/trips/review/${reservationId}`}>Write Review</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="flex-1"
-                    onClick={(e) => e.stopPropagation()}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Link href={`/trips/dispute/${reservationId}`}>File Dispute</Link>
-                  </Button>
-                </div>
-              </>
-            )}
           </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      </div>
     </Card>
   )
 }

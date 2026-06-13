@@ -76,7 +76,7 @@ export function VehicleResultsGrid({
         </p>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {mobileFilters && <div className="xl:hidden">{mobileFilters}</div>}
+          {mobileFilters && <div className="lg:hidden">{mobileFilters}</div>}
           <Select onValueChange={setSortBy} value={sortBy}>
             <SelectTrigger
               aria-label="Sort vehicles"
@@ -235,7 +235,9 @@ export function VehicleResultsGrid({
             <div
               className={cn(
                 "grid gap-4 sm:gap-6",
-                viewMode === "grid" ? "auto-rows-fr grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+                viewMode === "grid"
+                  ? "auto-rows-fr grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                  : "grid-cols-1"
               )}
             >
               {paginatedVehicles.map((vehicle) => (
@@ -249,6 +251,7 @@ export function VehicleResultsGrid({
                   image={vehicle.image}
                   imageKey={vehicle.imageKey}
                   key={vehicle.id}
+                  layout={viewMode === "list" ? "list" : "grid"}
                   location={vehicle.location}
                   make={vehicle.make}
                   model={vehicle.model}

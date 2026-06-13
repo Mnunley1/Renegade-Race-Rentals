@@ -874,7 +874,12 @@ function VehiclesPageContent() {
         datePickerOpen={datePickerOpen}
         dateRange={dateRange}
         filters={filterState}
+        geocodeZipCode={geocodeZipCode}
+        getCurrentLocation={getCurrentLocation}
+        isGeocodingZip={isGeocodingZip}
+        isGettingLocation={isGettingLocation}
         isMobile={isMobile}
+        locationError={locationError}
         searchSuggestions={searchSuggestions}
         setDatePickerOpen={setDatePickerOpen}
         tracks={tracks}
@@ -893,19 +898,14 @@ function VehiclesPageContent() {
       )}
 
       <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        <div className="grid gap-6 xl:grid-cols-[320px_1fr] xl:gap-8">
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:gap-8">
           {/* Filters Sidebar - Desktop */}
-          <aside className="hidden xl:block">
-            <div className="sticky top-20">
+          <aside className="hidden lg:block">
+            <div className="sticky top-52">
               <FilterPanel
                 actions={filterActions}
                 activeFiltersCount={activeFiltersCount}
                 filters={filterState}
-                geocodeZipCode={geocodeZipCode}
-                getCurrentLocation={getCurrentLocation}
-                isGeocodingZip={isGeocodingZip}
-                isGettingLocation={isGettingLocation}
-                locationError={locationError}
                 makes={makes}
                 models={models}
                 tracks={tracks}
@@ -936,11 +936,6 @@ function VehiclesPageContent() {
                   activeFiltersCount={activeFiltersCount}
                   filteredCount={filteredVehicles.length}
                   filters={filterState}
-                  geocodeZipCode={geocodeZipCode}
-                  getCurrentLocation={getCurrentLocation}
-                  isGeocodingZip={isGeocodingZip}
-                  isGettingLocation={isGettingLocation}
-                  locationError={locationError}
                   makes={makes}
                   models={models}
                   tracks={tracks}

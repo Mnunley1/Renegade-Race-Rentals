@@ -78,14 +78,19 @@ function mapReservation(res: any): Trip | null {
 
 function SkeletonCard() {
   return (
-    <Card className="flex h-64 overflow-hidden md:flex-row">
-      <div className="h-48 w-full shrink-0 animate-pulse bg-muted md:h-auto md:w-2/5" />
-      <CardContent className="flex flex-1 flex-col gap-4 p-6">
-        <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-20 w-full animate-pulse rounded bg-muted" />
-        <div className="mt-auto h-10 w-full animate-pulse rounded bg-muted" />
-      </CardContent>
+    <Card className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row">
+        <div className="h-44 w-full shrink-0 animate-pulse bg-muted sm:h-auto sm:w-60 md:w-72" />
+        <CardContent className="flex flex-1 flex-col gap-3 p-5">
+          <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="mt-auto flex gap-2 border-t pt-4">
+            <div className="h-9 w-28 animate-pulse rounded bg-muted" />
+            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+          </div>
+        </CardContent>
+      </div>
     </Card>
   )
 }
@@ -172,7 +177,7 @@ function TripList({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
       {filtered.map((trip) => (
         <TripCard key={trip.reservationId} {...trip} />
       ))}
@@ -364,7 +369,7 @@ export default function TripsPage() {
     cancelled.length
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="mb-1 font-bold text-3xl tracking-tight">My Trips</h1>
@@ -388,7 +393,7 @@ export default function TripsPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />

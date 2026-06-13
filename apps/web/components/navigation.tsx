@@ -26,12 +26,17 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CoachNavLink } from "@/components/coach-nav-link"
 import { HostNavLink } from "@/components/host-nav-link"
 import { InboxButton } from "@/components/inbox-button"
 import { NotificationBell } from "@/components/notification-bell"
 import { UserMenu } from "@/components/user-menu"
 import { api } from "@/lib/convex"
+
+const NAV_LINKS = [
+  { href: "/vehicles", label: "Vehicles" },
+  { href: "/motorsports", label: "Motorsports" },
+  { href: "/coaches", label: "Coaches" },
+] as const
 
 const sidebarLinkClass =
   "flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors hover:bg-accent"
@@ -375,68 +380,31 @@ export function Navigation() {
               </span>
             </Link>
             <div className="hidden items-center gap-8 md:flex">
-              <Link
-                className={cn(
-                  "font-medium text-sm transition-colors hover:text-foreground",
-                  pathname === "/vehicles" ? "text-foreground" : "text-muted-foreground"
-                )}
-                href="/vehicles"
-              >
-                Vehicles
-              </Link>
-              <Link
-                className={cn(
-                  "font-medium text-sm transition-colors hover:text-foreground",
-                  pathname === "/motorsports" || pathname?.startsWith("/motorsports")
-                    ? "text-foreground"
-                    : "text-muted-foreground"
-                )}
-                href="/motorsports"
-              >
-                Motorsports
-              </Link>
-              <Link
-                className={cn(
-                  "font-medium text-sm transition-colors hover:text-foreground",
-                  pathname === "/coaches" || pathname?.startsWith("/coaches")
-                    ? "text-foreground"
-                    : "text-muted-foreground"
-                )}
-                href="/coaches"
-              >
-                Coaches
-              </Link>
-              {isSignedIn && (
-                <>
-                  <Separator className="h-5" orientation="vertical" />
-                  <Link
-                    className={cn(
-                      "font-medium text-sm transition-colors hover:text-foreground",
-                      pathname === "/trips" ? "text-foreground" : "text-muted-foreground"
-                    )}
-                    href="/trips"
-                  >
-                    Trips
-                  </Link>
-                  <Link
-                    className={cn(
-                      "font-medium text-sm transition-colors hover:text-foreground",
-                      pathname === "/favorites" ? "text-foreground" : "text-muted-foreground"
-                    )}
-                    href="/favorites"
-                  >
-                    Favorites
-                  </Link>
-                </>
-              )}
+              {NAV_LINKS.map((link) => (
+                <Link
+                  className={cn(
+                    "font-medium text-sm transition-colors hover:text-foreground",
+                    pathname === link.href || pathname?.startsWith(`${link.href}/`)
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  href={link.href}
+                  key={link.href}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <HostNavLink className="hidden md:flex" />
-            <CoachNavLink className="hidden md:flex" />
-            <InboxButton />
-            <NotificationBell />
+          <div className="flex items-center gap-1.5">
+            <HostNavLink className="hidden md:inline-flex" />
+            {isSignedIn && (
+              <>
+                <InboxButton />
+                <NotificationBell />
+              </>
+            )}
             <UserMenu />
           </div>
         </div>

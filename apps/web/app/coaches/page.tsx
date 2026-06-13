@@ -2,7 +2,7 @@
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
+import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { cn } from "@workspace/ui/lib/utils"
 import { useQuery } from "convex/react"
 import { MapPin, Plus, Search, Settings, X } from "lucide-react"
 import Link from "next/link"
@@ -21,6 +22,13 @@ import { useDebounce } from "@/hooks/useDebounce"
 import { api } from "@/lib/convex"
 
 const ITEMS_PER_PAGE = 12
+
+const RACING_TYPES = [
+  { value: "all", label: "All" },
+  { value: "real-world", label: "Real-World" },
+  { value: "sim-racing", label: "Sim Racing" },
+  { value: "both", label: "Both" },
+] as const
 
 export default function CoachesPage() {
   const [racingTypeFilter, setRacingTypeFilter] = useState<string>("all")
@@ -56,6 +64,14 @@ export default function CoachesPage() {
       hourlyRate: coach.hourlyRate,
       halfDayRate: coach.halfDayRate,
       fullDayRate: coach.fullDayRate,
+      rating: coach.rating as number | undefined,
+      reviewCount: coach.reviewCount as number | undefined,
+      verificationStatus: coach.verificationStatus as
+        | "pending"
+        | "verified"
+        | "rejected"
+        | undefined,
+      racingType: coach.racingType as "real-world" | "sim-racing" | "both" | undefined,
     }))
   }, [coachesData])
 
@@ -113,11 +129,18 @@ export default function CoachesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-bold text-3xl tracking-tight">Coaches</h1>
-          <p className="mt-1 text-muted-foreground">
-            Find a driving coach to elevate your next track day
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-8 bg-primary" />
+            <span className="font-medium font-mono text-primary text-xs uppercase tracking-[0.25em]">
+              Driver Coaching
+            </span>
+          </div>
+          <h1 className="font-bold text-4xl tracking-tight md:text-5xl">Find Your Coach</h1>
+          <p className="max-w-xl text-lg text-muted-foreground">
+            Train with verified driving coaches to elevate your next track day — from first laps to
+            podium pace.
           </p>
         </div>
         {userCoachProfile ? (
@@ -159,25 +182,35 @@ export default function CoachesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {hasActiveFilters && (
-            <Button onClick={resetFilters} size="sm" variant="ghost">
-              <X className="mr-1 size-3" />
-              Clear All
-            </Button>
-          )}
+          {/* Racing type quick chips */}
+          <div className="flex flex-wrap gap-2">
+            {RACING_TYPES.map((type) => {
+              const active = racingTypeFilter === type.value
+              return (
+                <button
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 font-medium text-sm transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                  key={type.value}
+                  onClick={() => setRacingTypeFilter(type.value)}
+                  type="button"
+                >
+                  {type.label}
+                </button>
+              )
+            })}
+          </div>
 
-          <div className="ml-auto flex flex-wrap gap-3">
-            <Select onValueChange={setRacingTypeFilter} value={racingTypeFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Racing Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="real-world">Real-World</SelectItem>
-                <SelectItem value="sim-racing">Sim Racing</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            {hasActiveFilters && (
+              <Button onClick={resetFilters} size="sm" variant="ghost">
+                <X className="mr-1 size-3" />
+                Clear All
+              </Button>
+            )}
 
             {uniqueLocations.length > 0 && (
               <Select
@@ -216,25 +249,8 @@ export default function CoachesPage() {
           </div>
         </div>
 
-        {hasActiveFilters && (
+        {(locationFilter || specialtyFilter !== "all" || debouncedSearchQuery) && (
           <div className="flex flex-wrap gap-2">
-            {racingTypeFilter !== "all" && (
-              <Badge className="gap-1" variant="secondary">
-                {racingTypeFilter === "real-world"
-                  ? "Real-World"
-                  : racingTypeFilter === "sim-racing"
-                    ? "Sim Racing"
-                    : "Both"}
-                <button
-                  aria-label="Remove racing type filter"
-                  className="ml-1 rounded-full hover:bg-muted"
-                  onClick={() => setRacingTypeFilter("all")}
-                  type="button"
-                >
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            )}
             {locationFilter && (
               <Badge className="gap-1" variant="secondary">
                 <MapPin className="size-3" />
@@ -296,22 +312,23 @@ export default function CoachesPage() {
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Card key={i}>
-                    <CardHeader className="space-y-3">
+                    <CardContent className="space-y-4 p-5">
                       <div className="flex items-start gap-4">
-                        <Skeleton className="size-24 rounded-full" />
+                        <Skeleton className="size-20 rounded-full" />
                         <div className="flex-1 space-y-2">
                           <Skeleton className="h-5 w-32" />
                           <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-16" />
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
                       <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-5/6" />
                       <div className="flex flex-wrap gap-2">
                         <Skeleton className="h-6 w-20" />
                         <Skeleton className="h-6 w-24" />
+                      </div>
+                      <div className="flex items-center justify-between border-t pt-4">
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-8 w-24" />
                       </div>
                     </CardContent>
                   </Card>

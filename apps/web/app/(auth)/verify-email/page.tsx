@@ -2,20 +2,12 @@
 
 import { useSignUp } from "@clerk/nextjs"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { ArrowRight, Loader2, Mail } from "lucide-react"
+import { Card, CardContent, CardFooter } from "@workspace/ui/components/card"
+import { ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { OtpInput } from "@/components/auth/otp-input"
 import { handleError } from "@/lib/error-handler"
 
 type ClerkError = {
@@ -121,51 +113,32 @@ export default function VerifyEmailPage() {
         </p>
       </div>
 
-      <Card className="border-2 bg-card shadow-xl">
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-lg sm:text-xl">Enter verification code</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Check your email for the 6-digit code and enter it below
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4 sm:pb-6">
-          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+      <Card className="border bg-card shadow-sm">
+        <CardContent className="p-6">
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive text-xs sm:p-3 sm:text-sm">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm">
                 {error}
               </div>
             )}
 
             {resendSuccess && (
-              <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-2 text-green-700 text-xs sm:p-3 sm:text-sm dark:text-green-400">
+              <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-3 text-green-700 text-sm dark:text-green-400">
                 Verification code sent! Please check your email.
               </div>
             )}
 
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-sm" htmlFor="code">
-                Verification Code
-              </Label>
-              <div className="relative">
-                <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-10 text-center font-mono text-lg tracking-widest"
-                  disabled={isLoading}
-                  id="code"
-                  maxLength={6}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  required
-                  type="text"
-                  value={code}
-                />
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Enter the 6-digit code sent to your email
-              </p>
+            <div className="space-y-2">
+              <OtpInput
+                autoFocus
+                disabled={isLoading}
+                hasError={Boolean(error)}
+                onChange={(v) => setCode(v)}
+                value={code}
+              />
               {process.env.NODE_ENV === "development" &&
                 signUp.emailAddress?.includes("+clerk_test") && (
-                  <p className="font-medium text-primary text-xs">
+                  <p className="text-center font-medium text-primary text-xs">
                     Using test email? Use code: <span className="font-mono">424242</span>
                   </p>
                 )}
