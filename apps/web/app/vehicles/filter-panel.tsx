@@ -11,8 +11,6 @@ type FilterPanelProps = {
   filters: FilterState
   actions: FilterActions
   tracks: TrackItem[]
-  makes: string[]
-  models: string[]
   vehicles: VehicleItem[]
   activeFiltersCount: number
   isLoading?: boolean
@@ -22,8 +20,6 @@ export function FilterPanel({
   filters,
   actions,
   tracks,
-  makes,
-  models,
   vehicles,
   activeFiltersCount,
   isLoading = false,
@@ -62,14 +58,7 @@ export function FilterPanel({
           )}
         </div>
 
-        <FilterSections
-          actions={actions}
-          filters={filters}
-          makes={makes}
-          models={models}
-          tracks={tracks}
-          vehicles={vehicles}
-        />
+        <FilterSections actions={actions} filters={filters} tracks={tracks} vehicles={vehicles} />
       </div>
     </Card>
   )

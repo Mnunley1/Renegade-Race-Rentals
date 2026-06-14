@@ -8,7 +8,6 @@ import {
 } from "@workspace/ui/components/accordion"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
-import { Combobox } from "@workspace/ui/components/command"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
@@ -41,24 +40,18 @@ type FilterSectionsProps = {
   filters: FilterState
   actions: FilterActions
   tracks: TrackItem[]
-  makes: string[]
-  models: string[]
   vehicles: VehicleItem[]
 }
 
 const isDefault = (value: string, ...defaults: string[]) => defaults.includes(value)
 
-export function FilterSections({
-  filters,
-  actions,
-  tracks,
-  makes,
-  models,
-  vehicles,
-}: FilterSectionsProps) {
+export function FilterSections({ filters, actions, tracks, vehicles }: FilterSectionsProps) {
   const prices = vehicles.map((v) => v.pricePerDay).filter(Boolean)
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0
-  const maxPrice = prices.length > 0 ? Math.max(...prices) : 2000
+  const rawMaxPrice = prices.length > 0 ? Math.max(...prices) : 2000
+  // Keep the domain non-degenerate so the slider stays usable even when the current
+  // filters leave a single distinct price.
+  const maxPrice = rawMaxPrice > minPrice ? rawMaxPrice : minPrice + 100
   const priceStep = maxPrice > 1000 ? 100 : 25
   const currentPriceMin = filters.customPriceRange?.[0] ?? minPrice
   const currentPriceMax = filters.customPriceRange?.[1] ?? maxPrice
@@ -80,19 +73,6 @@ export function FilterSections({
     }))
   }, [prices, minPrice, maxPrice, currentPriceMin, currentPriceMax])
 
-  const makeCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const v of vehicles) counts[v.make] = (counts[v.make] || 0) + 1
-    return counts
-  }, [vehicles])
-
-  const modelCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const v of vehicles) counts[v.model] = (counts[v.model] || 0) + 1
-    return counts
-  }, [vehicles])
-
-  const hasMakeModelFilter = filters.selectedMake !== "all" || filters.selectedModel !== "all"
   const hasPerformanceFilter =
     filters.selectedDriveType !== "all" ||
     !!filters.minHorsepower ||
@@ -210,7 +190,7 @@ export function FilterSections({
         </div>
       </div>
 
-      <Accordion className="w-full" defaultValue={["make-model"]} type="multiple">
+      <Accordion className="w-full" defaultValue={["track"]} type="multiple">
         {/* Track */}
         <AccordionItem value="track">
           <AccordionTrigger>
@@ -231,49 +211,6 @@ export function FilterSections({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Make & Model */}
-        <AccordionItem value="make-model">
-          <AccordionTrigger>
-            <SectionLabel active={hasMakeModelFilter}>Make &amp; Model</SectionLabel>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-3 pt-2">
-              <div className="space-y-2">
-                <Label>Make</Label>
-                <Combobox
-                  onValueChange={actions.setSelectedMake}
-                  options={[
-                    { value: "all", label: `All makes (${vehicles.length})` },
-                    ...makes.map((make) => ({
-                      value: make,
-                      label: `${make} (${makeCounts[make] || 0})`,
-                    })),
-                  ]}
-                  placeholder="All makes"
-                  searchPlaceholder="Search makes..."
-                  value={filters.selectedMake}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Model</Label>
-                <Select onValueChange={actions.setSelectedModel} value={filters.selectedModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All models" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All models</SelectItem>
-                    {models.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model} ({modelCounts[model] || 0})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </AccordionContent>
         </AccordionItem>

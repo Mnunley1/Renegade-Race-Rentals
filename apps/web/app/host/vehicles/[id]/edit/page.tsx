@@ -1,6 +1,7 @@
 "use client"
 
 import { useUploadFile } from "@convex-dev/r2/react"
+import { CANONICAL_MAKES } from "@renegade/backend/convex/vehicleMakes"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -772,12 +773,18 @@ export default function EditVehiclePage() {
                 <Label htmlFor="make">Make *</Label>
                 <Input
                   id="make"
+                  list="vehicle-makes"
                   name="make"
                   onChange={handleChange}
                   placeholder="Porsche"
                   required
                   value={formData.make}
                 />
+                <datalist id="vehicle-makes">
+                  {CANONICAL_MAKES.map((make) => (
+                    <option key={make} value={make} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="model">Model *</Label>

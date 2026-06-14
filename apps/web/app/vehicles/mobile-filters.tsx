@@ -18,8 +18,6 @@ type MobileFiltersProps = {
   filters: FilterState
   actions: FilterActions
   tracks: TrackItem[]
-  makes: string[]
-  models: string[]
   vehicles: VehicleItem[]
   activeFiltersCount: number
   filteredCount?: number
@@ -29,8 +27,6 @@ export function MobileFilters({
   filters,
   actions,
   tracks,
-  makes,
-  models,
   vehicles,
   activeFiltersCount,
   filteredCount = 0,
@@ -71,14 +67,7 @@ export function MobileFilters({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          <FilterSections
-            actions={actions}
-            filters={filters}
-            makes={makes}
-            models={models}
-            tracks={tracks}
-            vehicles={vehicles}
-          />
+          <FilterSections actions={actions} filters={filters} tracks={tracks} vehicles={vehicles} />
         </div>
 
         {/* Sticky footer with result count */}

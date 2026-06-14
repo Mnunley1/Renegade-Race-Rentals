@@ -1,10 +1,17 @@
-import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { api, internal } from "./_generated/api"
-import { action, internalMutation, mutation, query } from "./_generated/server"
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDistance } from "./geocoding"
 import { r2 } from "./r2"
+import { normalizeMake } from "./vehicleMakes"
 
 // Get all active and approved vehicles with optimized images
 export const getAllWithOptimizedImages = query({
@@ -85,13 +92,14 @@ export const getAllWithOptimizedImages = query({
   },
 })
 
-// Search vehicles with availability filtering, paginated.
-// Returns { page, isDone, continueCursor }. Filters that map to indexed/scannable
-// fields run in the DB; text search, amenities, and any sort other than _creationTime
-// stay client-side over the accumulated pages.
+// Search vehicles with availability filtering.
+// Returns the FULL matching set (capped) so the client can filter (text/amenities/
+// rating), sort, and paginate over all results — not just one page. Filters that map
+// to indexed/scannable fields, plus availability and distance, run in the DB here.
+const SEARCH_RESULT_CAP = 500
+
 export const searchWithAvailability = query({
   args: {
-    paginationOpts: paginationOptsValidator,
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     trackId: v.optional(v.id("tracks")),
@@ -198,9 +206,9 @@ export const searchWithAvailability = query({
       return q.and(...preds)
     })
 
-    // Paginate raw vehicles, newest first
-    const result = await filtered.order("desc").paginate(args.paginationOpts)
-    let pageVehicles = result.page
+    // Collect the full matching set (capped), newest first. The client handles
+    // text/amenity/rating filtering, sorting, and "load more" pagination over this.
+    let pageVehicles = await filtered.order("desc").take(SEARCH_RESULT_CAP)
 
     // Exclude vehicles owned by the current user
     if (currentUserId) {
@@ -294,11 +302,7 @@ export const searchWithAvailability = query({
       })
     )
 
-    return {
-      page,
-      isDone: result.isDone,
-      continueCursor: result.continueCursor,
-    }
+    return page
   },
 })
 
@@ -578,7 +582,7 @@ export const createVehicleWithImages = mutation({
     const vehicleId = await ctx.db.insert("vehicles", {
       ownerId: userId,
       trackId: args.trackId,
-      make: args.make,
+      make: normalizeMake(args.make),
       model: args.model,
       year: args.year,
       dailyRate: args.dailyRate,
@@ -755,6 +759,7 @@ export const update = mutation({
     // Save the address without coordinates first (geocoding happens async)
     await ctx.db.patch(args.id, {
       ...updateData,
+      ...(updateData.make !== undefined ? { make: normalizeMake(updateData.make) } : {}),
       updatedAt: Date.now(),
     })
 
@@ -767,6 +772,73 @@ export const update = mutation({
     }
 
     return args.id
+  },
+})
+
+// One-time backfill: normalize every existing vehicle's `make` to its canonical form.
+// Idempotent — safe to re-run (already-normalized rows are skipped). Run from the
+// Convex dashboard's function runner or `npx convex run vehicles:normalizeAllMakes`.
+export const normalizeAllMakes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const vehicles = await ctx.db.query("vehicles").collect()
+    let updated = 0
+    for (const vehicle of vehicles) {
+      const normalized = normalizeMake(vehicle.make)
+      if (normalized && normalized !== vehicle.make) {
+        await ctx.db.patch(vehicle._id, { make: normalized })
+        updated++
+      }
+    }
+    return { scanned: vehicles.length, updated }
+  },
+})
+
+// Vehicles that have an address ZIP but no geocoded coordinates yet.
+export const listVehiclesMissingCoordinates = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const vehicles = await ctx.db.query("vehicles").collect()
+    return vehicles
+      .filter(
+        (vehicle) =>
+          !vehicle.deletedAt &&
+          vehicle.address?.zipCode &&
+          !(vehicle.address?.latitude && vehicle.address?.longitude)
+      )
+      .map((vehicle) => ({
+        vehicleId: vehicle._id,
+        address: {
+          street: vehicle.address?.street,
+          city: vehicle.address?.city,
+          state: vehicle.address?.state,
+          zipCode: vehicle.address?.zipCode ?? "",
+        },
+      }))
+  },
+})
+
+// One-time backfill: geocode every existing vehicle that's missing coordinates so
+// distance filtering can include it. Idempotent — already-geocoded vehicles are
+// skipped. Run with `npx convex run vehicles:backfillVehicleCoordinates`.
+export const backfillVehicleCoordinates = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const { geocodeAddress } = await import("./geocoding")
+    const todo = await ctx.runQuery(internal.vehicles.listVehiclesMissingCoordinates, {})
+    let updated = 0
+    for (const item of todo) {
+      const result = await geocodeAddress(item.address)
+      if (result) {
+        await ctx.runMutation(internal.vehicles.updateVehicleCoordinates, {
+          vehicleId: item.vehicleId,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        })
+        updated++
+      }
+    }
+    return { scanned: todo.length, updated }
   },
 })
 

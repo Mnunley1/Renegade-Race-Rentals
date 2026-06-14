@@ -69,10 +69,8 @@ export function VehicleResultsGrid({
         <p className="text-muted-foreground text-sm sm:text-base">
           <span className="font-bold text-base text-foreground sm:text-lg">
             {filteredVehicles.length}
-            {hasMore ? "+" : ""}
           </span>{" "}
-          {filteredVehicles.length === 1 ? "vehicle" : "vehicles"}{" "}
-          {hasMore ? "loaded" : "available"}
+          {filteredVehicles.length === 1 ? "vehicle" : "vehicles"} available
         </p>
 
         <div className="flex items-center gap-2 sm:gap-3">
