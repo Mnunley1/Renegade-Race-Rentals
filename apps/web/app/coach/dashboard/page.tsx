@@ -194,7 +194,7 @@ export default function CoachDashboardPage() {
     }
   }
 
-  const earnings = (upcoming ?? []).reduce((sum, b) => sum + b.totalAmount, 0)
+  const earnings = (upcoming ?? []).reduce((sum: number, b: any) => sum + b.totalAmount, 0)
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -325,7 +325,7 @@ export default function CoachDashboardPage() {
             <p className="text-muted-foreground text-sm">No pending requests right now.</p>
           ) : (
             <div className="space-y-3">
-              {pending.map((b) => (
+              {pending.map((b: any) => (
                 <div
                   className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between"
                   key={b._id}
@@ -399,7 +399,7 @@ export default function CoachDashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {upcoming.map((b) => (
+              {upcoming.map((b: any) => (
                 <div
                   className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                   key={b._id}

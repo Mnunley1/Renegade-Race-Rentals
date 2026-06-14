@@ -142,7 +142,7 @@ export function TripCard({
 
   // Find the most relevant damage invoice to display
   const activeDamageInvoice = damageInvoices?.find(
-    (inv) =>
+    (inv: any) =>
       inv.status === "pending_review" || inv.status === "payment_pending" || inv.status === "paid"
   )
 

@@ -75,7 +75,7 @@ export function NotificationBell() {
         <div className="max-h-[400px] overflow-y-auto">
           {notifications && notifications.length > 0 ? (
             <div className="divide-y divide-border">
-              {notifications.map((notification) => (
+              {notifications.map((notification: any) => (
                 <button
                   className="w-full cursor-pointer p-4 text-left transition-colors hover:bg-accent"
                   key={notification._id}

@@ -96,12 +96,12 @@ export default function CoachesPage() {
     if (debouncedSearchQuery.trim()) {
       const q = debouncedSearchQuery.toLowerCase()
       filtered = filtered.filter(
-        (c) =>
+        (c: any) =>
           c.name.toLowerCase().includes(q) ||
           c.location.toLowerCase().includes(q) ||
           c.headline?.toLowerCase().includes(q) ||
           c.bio.toLowerCase().includes(q) ||
-          c.specialties.some((s) => s.toLowerCase().includes(q))
+          c.specialties.some((s: any) => s.toLowerCase().includes(q))
       )
     }
     return filtered
@@ -357,7 +357,7 @@ export default function CoachesPage() {
           return (
             <>
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {paginatedCoaches.map((coach) => (
+                {paginatedCoaches.map((coach: any) => (
                   <CoachCard key={coach.id} {...coach} />
                 ))}
               </div>

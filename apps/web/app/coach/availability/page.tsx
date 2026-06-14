@@ -61,8 +61,8 @@ export default function CoachAvailabilityPage() {
   const blockedDates = useMemo<Date[]>(() => {
     if (!calendarData) return []
     return calendarData.availability
-      .filter((a) => !a.isAvailable)
-      .map((a) => new Date(`${a.date}T00:00:00`))
+      .filter((a: any) => !a.isAvailable)
+      .map((a: any) => new Date(`${a.date}T00:00:00`))
   }, [calendarData])
 
   const reservedDates = useMemo<Date[]>(() => {

@@ -68,7 +68,7 @@ export default function ApplicationsPage() {
   const filteredApplications =
     activeFilter === "all"
       ? applications
-      : applications.filter((app) => app.status === activeFilter)
+      : applications.filter((app: any) => app.status === activeFilter)
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">
@@ -91,7 +91,7 @@ export default function ApplicationsPage() {
           All ({applications.length})
         </Button>
         {(["pending", "accepted", "declined", "withdrawn"] as const).map((status) => {
-          const count = applications.filter((app) => app.status === status).length
+          const count = applications.filter((app: any) => app.status === status).length
           return (
             <Button
               key={status}
@@ -119,7 +119,7 @@ export default function ApplicationsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredApplications.map((application) => (
+          {filteredApplications.map((application: any) => (
             <Card key={application._id}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">

@@ -126,8 +126,8 @@ export default function CoachDetailPage({ params }: Props) {
   const blockedDates = useMemo<Date[]>(() => {
     if (!calendarData) return []
     return calendarData.availability
-      .filter((a) => !a.isAvailable)
-      .map((a) => new Date(`${a.date}T00:00:00`))
+      .filter((a: any) => !a.isAvailable)
+      .map((a: any) => new Date(`${a.date}T00:00:00`))
   }, [calendarData])
 
   const reservedDates = useMemo<Date[]>(() => {
@@ -316,7 +316,7 @@ export default function CoachDetailPage({ params }: Props) {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                {coach.specialties.map((s) => (
+                {coach.specialties.map((s: any) => (
                   <Badge key={s} variant="secondary">
                     {s}
                   </Badge>
@@ -356,7 +356,7 @@ export default function CoachDetailPage({ params }: Props) {
                       Certifications
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {coach.certifications.map((c) => (
+                      {coach.certifications.map((c: any) => (
                         <Badge key={c} variant="outline">
                           {c}
                         </Badge>
@@ -371,7 +371,7 @@ export default function CoachDetailPage({ params }: Props) {
                       Tracks
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {coach.tracksCoachedAt.map((t) => (
+                      {coach.tracksCoachedAt.map((t: any) => (
                         <Badge key={t} variant="outline">
                           {t}
                         </Badge>
@@ -398,7 +398,7 @@ export default function CoachDetailPage({ params }: Props) {
                 <p className="text-muted-foreground text-sm">No reviews yet.</p>
               ) : (
                 <div className="space-y-4">
-                  {reviews.slice(0, 5).map((r) => (
+                  {reviews.slice(0, 5).map((r: any) => (
                     <div className="border-b pb-4 last:border-b-0 last:pb-0" key={r._id}>
                       <div className="mb-1 flex items-center gap-2">
                         <span className="font-semibold text-sm">

@@ -37,7 +37,7 @@ export default function FavoritesPage() {
       return []
     }
     return favoritesData
-      .map((fav) => fav?.vehicle?._id as Id<"vehicles"> | undefined)
+      .map((fav: any) => fav?.vehicle?._id as Id<"vehicles"> | undefined)
       .filter((id: Id<"vehicles"> | undefined): id is Id<"vehicles"> => Boolean(id))
   }, [favoritesData])
 
@@ -52,7 +52,7 @@ export default function FavoritesPage() {
       return []
     }
     return favoritesData
-      .map((fav) => {
+      .map((fav: any) => {
         const vehicle = fav?.vehicle
         if (!vehicle) {
           return null

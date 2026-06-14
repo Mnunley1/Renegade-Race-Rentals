@@ -53,7 +53,7 @@ export default function DamageClaimPage() {
 
   // Check if there's already an open claim
   const hasOpenClaim = existingInvoices?.some(
-    (inv) => inv.status === "pending_review" || inv.status === "payment_pending"
+    (inv: any) => inv.status === "pending_review" || inv.status === "payment_pending"
   )
 
   const handleSubmit = async (e: React.FormEvent) => {

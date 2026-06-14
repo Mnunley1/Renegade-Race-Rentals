@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { api, internal } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
 import {
   action,
   internalAction,
@@ -823,9 +824,12 @@ export const listVehiclesMissingCoordinates = internalQuery({
 // skipped. Run with `npx convex run vehicles:backfillVehicleCoordinates`.
 export const backfillVehicleCoordinates = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ scanned: number; updated: number }> => {
     const { geocodeAddress } = await import("./geocoding")
-    const todo = await ctx.runQuery(internal.vehicles.listVehiclesMissingCoordinates, {})
+    const todo: Array<{
+      vehicleId: Id<"vehicles">
+      address: { street?: string; city?: string; state?: string; zipCode: string }
+    }> = await ctx.runQuery(internal.vehicles.listVehiclesMissingCoordinates, {})
     let updated = 0
     for (const item of todo) {
       const result = await geocodeAddress(item.address)

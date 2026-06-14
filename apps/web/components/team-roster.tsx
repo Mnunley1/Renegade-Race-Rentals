@@ -71,7 +71,7 @@ export function TeamRoster({ teamId, isOwner }: TeamRosterProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {members.map((member) => (
+        {members.map((member: any) => (
           <div className="flex items-center justify-between rounded-lg border p-3" key={member._id}>
             <div className="flex-1">
               <div className="flex items-center gap-2">
