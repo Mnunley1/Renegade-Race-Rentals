@@ -34,8 +34,8 @@ const STEPS = [
   },
   {
     icon: CreditCard,
-    title: "Book Instantly",
-    body: "Secure your rental with instant confirmation and flexible dates that fit your schedule. All payments are secure and protected.",
+    title: "Request to Book",
+    body: "Send a booking request for the dates that fit your schedule. Once the host approves, your rental is confirmed with secure, protected payments.",
   },
   {
     icon: Car,
@@ -101,9 +101,9 @@ export default function HomePage() {
   }, [vehiclesData, featuredVehicleStats])
 
   const benefits = [
-    "Instant booking confirmation",
+    "Host-approved booking requests",
     "Verified host vehicles",
-    "24/7 customer support",
+    "Responsive email support",
   ]
 
   const handleSearch = (e: React.FormEvent) => {
@@ -411,8 +411,7 @@ export default function HomePage() {
                 Ready to <span className="text-primary">Race?</span>
               </h2>
               <p className="mx-auto mb-10 max-w-2xl text-lg text-white/80 leading-relaxed md:text-xl">
-                Join thousands of drivers who have experienced the thrill of track car rentals.
-                Start your journey today.
+                Experience the thrill of track car rentals. Start your journey today.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Link href="/vehicles">

@@ -1195,7 +1195,7 @@ function VehicleDetailsPageContent() {
 
                 <div className="mt-6 text-center">
                   <p className="text-muted-foreground text-sm">
-                    Join thousands of racing enthusiasts
+                    Join a community of racing enthusiasts
                   </p>
                 </div>
               </CardContent>
