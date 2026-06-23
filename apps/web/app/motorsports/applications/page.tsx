@@ -141,7 +141,14 @@ export default function ApplicationsPage() {
 
                     <div className="mb-3 flex items-center gap-1.5 text-muted-foreground text-sm">
                       <Calendar className="size-4" />
-                      <span>Applied {new Date(application.createdAt).toLocaleDateString()}</span>
+                      <span>
+                        Applied{" "}
+                        {new Date(application.createdAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </span>
                     </div>
 
                     {application.message && (

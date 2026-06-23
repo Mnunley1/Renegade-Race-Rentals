@@ -124,8 +124,14 @@ export default function CoachingBookingsPage() {
       header: "Dates",
       cell: (row) => (
         <span>
-          {new Date(row.startDate).toLocaleDateString()}
-          {row.endDate ? ` - ${new Date(row.endDate).toLocaleDateString()}` : ""}
+          {new Date(row.startDate).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+          {row.endDate
+            ? ` - ${new Date(row.endDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`
+            : ""}
         </span>
       ),
       sortable: true,
@@ -270,7 +276,12 @@ export default function CoachingBookingsPage() {
                       {
                         key: "start",
                         header: "Start",
-                        value: (r) => new Date(r.startDate).toLocaleDateString(),
+                        value: (r) =>
+                          new Date(r.startDate).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          }),
                       },
                       { key: "sessionType", header: "Session", value: (r) => r.sessionType ?? "" },
                       {

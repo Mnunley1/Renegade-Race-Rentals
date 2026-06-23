@@ -218,7 +218,11 @@ export default function ReportsPage() {
                           </span>
                           <span>
                             <strong>Created:</strong>{" "}
-                            {new Date(report.createdAt).toLocaleDateString()}
+                            {new Date(report.createdAt).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
                           </span>
                         </div>
                       </div>
@@ -270,7 +274,15 @@ export default function ReportsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Created</Label>
-                <p className="text-sm">{new Date(selectedReport.createdAt).toLocaleString()}</p>
+                <p className="text-sm">
+                  {new Date(selectedReport.createdAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
 
               {selectedReport.status === "pending" || selectedReport.status === "reviewed" ? (
@@ -322,7 +334,13 @@ export default function ReportsPage() {
                     <div className="space-y-2">
                       <Label>Resolved At</Label>
                       <p className="text-sm">
-                        {new Date(selectedReport.resolvedAt).toLocaleString()}
+                        {new Date(selectedReport.resolvedAt).toLocaleString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   )}

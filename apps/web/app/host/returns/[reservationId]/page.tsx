@@ -197,7 +197,11 @@ export default function ReturnReviewPage() {
               <div>
                 <Label>Return Date</Label>
                 <p className="font-semibold">
-                  {new Date(renterReturnForm.returnDate).toLocaleDateString()}
+                  {new Date(renterReturnForm.returnDate).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </p>
               </div>
               <div>
