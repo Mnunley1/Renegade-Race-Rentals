@@ -1,6 +1,7 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
@@ -13,12 +14,16 @@ import {
   Clock,
   CreditCard,
   FlagTriangleRight,
+  GraduationCap,
   Search,
   Send,
+  Star,
   XCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { CoachCancelDialog } from "@/components/coach-cancel-dialog"
+import { CoachReviewDialog } from "@/components/coach-review-dialog"
 import { TripCard } from "@/components/trip-card"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
@@ -73,14 +78,19 @@ function mapReservation(res: any): Trip | null {
 
 function SkeletonCard() {
   return (
-    <Card className="flex h-64 overflow-hidden md:flex-row">
-      <div className="h-48 w-full shrink-0 animate-pulse bg-muted md:h-auto md:w-2/5" />
-      <CardContent className="flex flex-1 flex-col gap-4 p-6">
-        <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-20 w-full animate-pulse rounded bg-muted" />
-        <div className="mt-auto h-10 w-full animate-pulse rounded bg-muted" />
-      </CardContent>
+    <Card className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row">
+        <div className="h-44 w-full shrink-0 animate-pulse bg-muted sm:h-auto sm:w-60 md:w-72" />
+        <CardContent className="flex flex-1 flex-col gap-3 p-5">
+          <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="mt-auto flex gap-2 border-t pt-4">
+            <div className="h-9 w-28 animate-pulse rounded bg-muted" />
+            <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+          </div>
+        </CardContent>
+      </div>
     </Card>
   )
 }
@@ -167,9 +177,148 @@ function TripList({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
       {filtered.map((trip) => (
         <TripCard key={trip.reservationId} {...trip} />
+      ))}
+    </div>
+  )
+}
+
+const coachingStatusVariant: Record<string, { label: string; className: string }> = {
+  pending: { label: "Awaiting coach", className: "" },
+  approved: {
+    label: "Approved — pay to confirm",
+    className: "bg-amber-500/15 text-amber-900 dark:text-amber-200",
+  },
+  confirmed: {
+    label: "Confirmed",
+    className: "bg-green-500/15 text-green-900 dark:text-green-200",
+  },
+  completed: { label: "Completed", className: "" },
+  cancelled: { label: "Cancelled", className: "" },
+  declined: { label: "Declined", className: "" },
+  expired: { label: "Expired — not paid in time", className: "" },
+}
+
+function coachingSessionLabel(b: any) {
+  if (b.sessionType === "hourly") return `${b.hours}-hour session`
+  if (b.sessionType === "half_day") return "Half-day session"
+  return "Full-day session"
+}
+
+function CoachingBookingRow({ booking }: { booking: any }) {
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const variant = coachingStatusVariant[booking.status] || coachingStatusVariant.pending
+  const isCompleted = booking.status === "completed"
+  const isCancellable =
+    booking.status === "pending" || booking.status === "approved" || booking.status === "confirmed"
+
+  const existingReview = useQuery(
+    api.coachingReviews.getByBooking,
+    isCompleted ? { bookingId: booking._id as Id<"coachingBookings"> } : "skip"
+  )
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <GraduationCap className="size-4 text-muted-foreground" />
+            <Link
+              className="font-semibold hover:underline"
+              href={`/coaches/${booking.coachProfileId}`}
+            >
+              {booking.coach?.name || "Coach"}
+            </Link>
+            <Badge className={variant?.className} variant="outline">
+              {variant?.label}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {coachingSessionLabel(booking)} ·{" "}
+            {new Date(`${booking.startDate}T00:00:00`).toLocaleDateString()}
+            {booking.startTime ? ` · ${booking.startTime}` : ""}
+          </p>
+          {booking.eventName && (
+            <p className="text-muted-foreground text-sm">{booking.eventName}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-semibold">${(booking.totalAmount / 100).toFixed(0)}</span>
+          {booking.status === "approved" && (
+            <Button asChild size="sm">
+              <Link href={`/checkout/pay-coaching?bookingId=${booking._id}`}>
+                <CreditCard className="mr-2 size-4" />
+                Pay
+              </Link>
+            </Button>
+          )}
+          {isCancellable && (
+            <>
+              <Button onClick={() => setCancelOpen(true)} size="sm" variant="ghost">
+                Cancel
+              </Button>
+              <CoachCancelDialog
+                actorRole="renter"
+                bookingId={booking._id as Id<"coachingBookings">}
+                onOpenChange={setCancelOpen}
+                open={cancelOpen}
+                paymentStatus={booking.paymentStatus}
+                startDate={booking.startDate}
+                startTime={booking.startTime}
+                status={booking.status}
+                totalAmount={booking.totalAmount}
+              />
+            </>
+          )}
+          {isCompleted &&
+            (existingReview ? (
+              <span className="flex items-center gap-1 text-muted-foreground text-sm">
+                <Star className="size-4 fill-primary text-primary" />
+                Reviewed
+              </span>
+            ) : (
+              existingReview === null && (
+                <>
+                  <Button onClick={() => setReviewOpen(true)} size="sm" variant="outline">
+                    <Star className="mr-2 size-4" />
+                    Leave a review
+                  </Button>
+                  <CoachReviewDialog
+                    bookingId={booking._id as Id<"coachingBookings">}
+                    coachName={booking.coach?.name || "your coach"}
+                    onOpenChange={setReviewOpen}
+                    open={reviewOpen}
+                  />
+                </>
+              )
+            ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function CoachingBookingsList({ coachingData }: { coachingData: any[] | undefined }) {
+  if (coachingData === undefined) {
+    return <p className="py-12 text-center text-muted-foreground">Loading coaching sessions…</p>
+  }
+  if (coachingData.length === 0) {
+    return (
+      <EmptyState
+        description="Book a coach to elevate your next track day."
+        icon={GraduationCap}
+        title="No coaching sessions yet"
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {coachingData.map((b) => (
+        <CoachingBookingRow booking={b} key={b._id} />
       ))}
     </div>
   )
@@ -185,6 +334,11 @@ export default function TripsPage() {
 
   const reservationsData = useQuery(
     api.reservations.getByUser,
+    user?.id ? { userId: user.id, role: "renter" as const } : "skip"
+  )
+
+  const coachingData = useQuery(
+    api.coachingBookings.getByUser,
     user?.id ? { userId: user.id, role: "renter" as const } : "skip"
   )
 
@@ -215,7 +369,7 @@ export default function TripsPage() {
     cancelled.length
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="mb-1 font-bold text-3xl tracking-tight">My Trips</h1>
@@ -239,7 +393,7 @@ export default function TripsPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
@@ -270,6 +424,10 @@ export default function TripsPage() {
               <TabsTrigger value="cancelled">
                 Cancelled
                 {cancelled.length > 0 && ` (${cancelled.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="coaching">
+                Coaching
+                {coachingData && coachingData.length > 0 && ` (${coachingData.length})`}
               </TabsTrigger>
             </TabsList>
 
@@ -379,6 +537,11 @@ export default function TripsPage() {
             ) : (
               <TripList searchQuery={searchQuery} sortDirection={pastSort} trips={past} />
             )}
+          </TabsContent>
+
+          {/* Coaching */}
+          <TabsContent value="coaching">
+            <CoachingBookingsList coachingData={coachingData} />
           </TabsContent>
 
           {/* Cancelled */}

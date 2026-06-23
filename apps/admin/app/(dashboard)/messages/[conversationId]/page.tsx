@@ -248,11 +248,23 @@ export default function ConversationPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created</span>
-                <span>{new Date(conversation.createdAt).toLocaleDateString()}</span>
+                <span>
+                  {new Date(conversation.createdAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Message</span>
-                <span>{new Date(conversation.lastMessageAt).toLocaleDateString()}</span>
+                <span>
+                  {new Date(conversation.lastMessageAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
               </div>
             </CardContent>
           </Card>

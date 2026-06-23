@@ -2,8 +2,10 @@
 
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
+import { useQuery } from "convex/react"
 import { Send, X } from "lucide-react"
-import { type RefObject, useCallback } from "react"
+import { type RefObject, useCallback, useEffect, useRef } from "react"
+import { api } from "@/lib/convex"
 
 interface ReplyingToData {
   content: string
@@ -15,9 +17,10 @@ interface MessageInputProps {
   onSend: () => void
   replyingTo: ReplyingToData | null | undefined
   onCancelReply: () => void
-  inputRef?: RefObject<HTMLInputElement | null>
+  inputRef?: RefObject<HTMLTextAreaElement | null>
   maxLength?: number
   warnThreshold?: number
+  userId: string
 }
 
 export function MessageInput({
@@ -29,16 +32,47 @@ export function MessageInput({
   inputRef,
   maxLength = 2000,
   warnThreshold = 1800,
+  userId,
 }: MessageInputProps) {
+  const localRef = useRef<HTMLTextAreaElement>(null)
+  const textareaRef = inputRef ?? localRef
+
+  const templatesResult = useQuery(api.messageTemplates.list, userId ? { userId } : "skip")
+
+  const templates = [
+    ...(templatesResult?.customTemplates ?? []),
+    ...(templatesResult?.platformTemplates ?? []),
+  ]
+
+  const canSend = value.trim().length > 0 && value.length <= maxLength
+
+  // Auto-grow the textarea to fit its content (capped via max-height in CSS)
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [textareaRef, value])
+
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && !e.shiftKey && value.trim().length <= maxLength) {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey && canSend) {
         e.preventDefault()
         onSend()
       }
     },
-    [onSend, value, maxLength]
+    [onSend, canSend]
   )
+
+  const handleSelectTemplate = useCallback(
+    (content: string) => {
+      onChange(content)
+      textareaRef.current?.focus()
+    },
+    [onChange, textareaRef]
+  )
+
+  const showTemplates = templates.length > 0 && value.trim().length === 0
 
   return (
     <div className="border-t p-4">
@@ -63,22 +97,39 @@ export function MessageInput({
         </div>
       )}
 
-      <div className="flex space-x-2">
+      {/* Quick-reply chips */}
+      {showTemplates && (
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          {templates.map((template) => (
+            <button
+              className="flex-shrink-0 rounded-full border border-border bg-background px-3 py-1.5 text-foreground text-xs transition-colors hover:border-[#EF1C25] hover:bg-[#EF1C25]/5"
+              key={`${template.label}-${template.content}`}
+              onClick={() => handleSelectTemplate(template.content)}
+              type="button"
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-end gap-2">
         <div className="relative flex-1">
-          <input
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-16 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          <textarea
+            className="flex max-h-40 min-h-[44px] w-full resize-none rounded-md border border-input bg-background px-3 py-2.5 pr-16 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             maxLength={maxLength + 100}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={replyingTo ? "Type your reply..." : "Type a message..."}
-            ref={inputRef}
+            ref={textareaRef}
+            rows={1}
             value={value}
           />
           {value.length > warnThreshold && (
             <span
               aria-live="polite"
               className={cn(
-                "absolute top-1/2 right-2 -translate-y-1/2 text-xs tabular-nums",
+                "absolute right-2 bottom-2 text-xs tabular-nums",
                 value.length > maxLength ? "font-medium text-destructive" : "text-muted-foreground"
               )}
             >
@@ -88,8 +139,8 @@ export function MessageInput({
         </div>
         <Button
           aria-label="Send message"
-          className="min-h-[44px] min-w-[44px]"
-          disabled={!value.trim() || value.length > maxLength}
+          className="min-h-[44px] min-w-[44px] flex-shrink-0"
+          disabled={!canSend}
           onClick={onSend}
           size="sm"
         >

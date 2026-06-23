@@ -35,15 +35,6 @@ export function HostNavLink({ className }: { className?: string }) {
     )
   }
 
-  return (
-    <Link
-      className={cn(
-        "font-medium text-muted-foreground text-sm transition-colors hover:text-foreground",
-        className
-      )}
-      href="/host/dashboard"
-    >
-      Host Dashboard
-    </Link>
-  )
+  // Active hosts reach their dashboard via the user dropdown — no navbar item.
+  return null
 }

@@ -67,6 +67,15 @@ type VehicleOwner = {
   externalId?: string
 }
 
+// Format a stored member-since value (ISO string) as "Month Year",
+// matching the renter profile page. Returns "" for missing/invalid values.
+function formatMemberSince(value?: string): string {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+}
+
 type VehicleTrack = {
   _id: string
   name: string
@@ -423,7 +432,7 @@ function VehicleDetailsPageContent() {
     avatar: vehicle.owner?.profileImageR2Key
       ? r2Url(vehicle.owner.profileImageR2Key)
       : vehicle.owner?.profileImage || "",
-    memberSince: vehicle.owner?.memberSince || "",
+    memberSince: formatMemberSince(vehicle.owner?.memberSince),
     tripsCompleted: vehicle.owner?.totalRentals || 0,
   }
 
@@ -1195,7 +1204,7 @@ function VehicleDetailsPageContent() {
 
                 <div className="mt-6 text-center">
                   <p className="text-muted-foreground text-sm">
-                    Join thousands of racing enthusiasts
+                    Join a community of racing enthusiasts
                   </p>
                 </div>
               </CardContent>

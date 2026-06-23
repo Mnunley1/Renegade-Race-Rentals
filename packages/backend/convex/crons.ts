@@ -1,5 +1,5 @@
 import { cronJobs } from "convex/server"
-import { api } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 const crons = cronJobs()
 
@@ -9,6 +9,14 @@ crons.interval(
   "cleanup expired approved reservations",
   { hours: 1 },
   api.reservations.cleanupExpiredApprovedReservations
+)
+
+// Expire approved coaching bookings that weren't paid within 48 hours, freeing
+// the coach's dates for other requests
+crons.interval(
+  "expire approved unpaid coaching bookings",
+  { hours: 1 },
+  internal.coachingBookings.expireApprovedUnpaidBookings
 )
 
 // Clean up old webhook events every 24 hours

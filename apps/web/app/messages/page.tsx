@@ -8,6 +8,7 @@ import { Input } from "@workspace/ui/components/input"
 import { cn } from "@workspace/ui/lib/utils"
 import { useMutation, useQuery } from "convex/react"
 import { MessageSquare, Search } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
@@ -17,6 +18,7 @@ import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
 import { formatTime } from "@/lib/format-time"
 import { r2Url } from "@/lib/r2-url"
+import { getReservationStatusMeta } from "@/lib/reservation-status"
 
 type FilterTab = "all" | "unread" | "archived"
 
@@ -325,24 +327,69 @@ function MessagesPageContent() {
                       ? conversation.unreadCountRenter
                       : conversation.unreadCountOwner
 
+                  const avatarUrl = otherUser?.profileImageR2Key
+                    ? r2Url(otherUser.profileImageR2Key)
+                    : otherUser?.profileImage
+                  const statusMeta = getReservationStatusMeta(conversation.reservation?.status)
+                  const contextLabel = conversation.vehicle
+                    ? `${conversation.vehicle.year} ${conversation.vehicle.make} ${conversation.vehicle.model}`
+                    : conversation.coachProfile
+                      ? "Coaching"
+                      : conversation.team
+                        ? `Team: ${conversation.team.name}`
+                        : conversation.driverProfile
+                          ? "Driver conversation"
+                          : "Conversation"
+
                   const conversationContent = (
                     <div className="flex items-start space-x-3">
-                      <UserAvatar
-                        imageUrl={
-                          otherUser?.profileImageR2Key
-                            ? r2Url(otherUser.profileImageR2Key)
-                            : otherUser?.profileImage
-                        }
-                        name={otherUser?.name || "Unknown"}
-                        size="md"
-                      />
+                      {/* Lead with the vehicle photo when present; person avatar as a badge */}
+                      {conversation.vehicleImageKey ? (
+                        <div className="relative flex-shrink-0">
+                          <Image
+                            alt={contextLabel}
+                            className="h-12 w-12 rounded-lg object-cover"
+                            height={48}
+                            src={r2Url(conversation.vehicleImageKey)}
+                            width={48}
+                          />
+                          <span className="absolute -right-1 -bottom-1 rounded-full ring-2 ring-card">
+                            <UserAvatar
+                              className="h-6 w-6 text-xs"
+                              imageUrl={avatarUrl}
+                              name={otherUser?.name || "Unknown"}
+                              size="sm"
+                            />
+                          </span>
+                        </div>
+                      ) : (
+                        <UserAvatar
+                          imageUrl={avatarUrl}
+                          name={otherUser?.name || "Unknown"}
+                          size="md"
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-start justify-between">
-                          <h4 className="truncate font-semibold text-foreground text-sm">
+                          <h4
+                            className={cn(
+                              "truncate text-sm",
+                              unreadCount > 0
+                                ? "font-bold text-foreground"
+                                : "font-semibold text-foreground"
+                            )}
+                          >
                             {otherUser?.name || "Unknown User"}
                           </h4>
                           <div className="ml-2 flex flex-shrink-0 items-center space-x-2">
-                            <span className="text-muted-foreground text-xs">
+                            <span
+                              className={cn(
+                                "text-xs",
+                                unreadCount > 0
+                                  ? "font-medium text-foreground"
+                                  : "text-muted-foreground"
+                              )}
+                            >
                               {formatTime(conversation.lastMessageAt)}
                             </span>
                             {unreadCount > 0 && (
@@ -352,20 +399,24 @@ function MessagesPageContent() {
                             )}
                           </div>
                         </div>
-                        <p className="mb-1 truncate text-muted-foreground text-xs">
-                          {conversation.vehicle
-                            ? `${conversation.vehicle.year} ${conversation.vehicle.make} ${conversation.vehicle.model}`
-                            : conversation.team
-                              ? `Team: ${conversation.team.name}`
-                              : conversation.driverProfile
-                                ? "Driver conversation"
-                                : "Conversation"}
-                        </p>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <p className="truncate text-muted-foreground text-xs">{contextLabel}</p>
+                          {statusMeta && (
+                            <span
+                              className={cn(
+                                "flex-shrink-0 rounded-full px-1.5 py-0.5 font-medium text-[10px] leading-none",
+                                statusMeta.className
+                              )}
+                            >
+                              {statusMeta.label}
+                            </span>
+                          )}
+                        </div>
                         <p
                           className={cn(
                             "truncate text-xs",
                             unreadCount > 0
-                              ? "font-medium text-foreground"
+                              ? "font-semibold text-foreground"
                               : "text-muted-foreground"
                           )}
                         >

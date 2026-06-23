@@ -1,9 +1,18 @@
 import { v } from "convex/values"
 import { api, internal } from "./_generated/api"
-import { action, internalMutation, mutation, query } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDistance } from "./geocoding"
 import { r2 } from "./r2"
+import { normalizeMake } from "./vehicleMakes"
 
 // Get all active and approved vehicles with optimized images
 export const getAllWithOptimizedImages = query({
@@ -84,20 +93,37 @@ export const getAllWithOptimizedImages = query({
   },
 })
 
-// Search vehicles with availability filtering (optimal batch query approach)
+// Search vehicles with availability filtering.
+// Returns the FULL matching set (capped) so the client can filter (text/amenities/
+// rating), sort, and paginate over all results — not just one page. Filters that map
+// to indexed/scannable fields, plus availability and distance, run in the DB here.
+const SEARCH_RESULT_CAP = 500
+
 export const searchWithAvailability = query({
   args: {
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     trackId: v.optional(v.id("tracks")),
-    limit: v.optional(v.number()),
+    // Server-side filterable fields
+    make: v.optional(v.string()),
+    model: v.optional(v.string()),
+    transmission: v.optional(v.string()),
+    drivetrain: v.optional(v.string()),
+    minYear: v.optional(v.number()),
+    maxYear: v.optional(v.number()),
+    minHorsepower: v.optional(v.number()),
+    maxHorsepower: v.optional(v.number()),
+    minDailyRate: v.optional(v.number()),
+    maxDailyRate: v.optional(v.number()),
+    experienceLevel: v.optional(v.string()),
+    tireType: v.optional(v.string()),
+    deliveryOnly: v.optional(v.boolean()),
     // Distance-based filtering (optional)
     userLatitude: v.optional(v.number()),
     userLongitude: v.optional(v.number()),
-    maxDistanceMiles: v.optional(v.number()), // Maximum distance in miles
+    maxDistanceMiles: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Normalize empty strings, null, or undefined to undefined for date filtering
     const startDate =
       typeof args.startDate === "string" && args.startDate.trim() !== ""
         ? args.startDate.trim()
@@ -106,50 +132,92 @@ export const searchWithAvailability = query({
       typeof args.endDate === "string" && args.endDate.trim() !== ""
         ? args.endDate.trim()
         : undefined
-    const { trackId, limit = 50 } = args
 
-    // Get current user identity to filter out their own vehicles
     const identity = await ctx.auth.getUserIdentity()
     const currentUserId = identity?.subject
 
-    // Step 1: Get all active/approved vehicles (single query), excluding soft-deleted
-    let vehiclesQuery = ctx.db
-      .query("vehicles")
-      .withIndex("by_active_approved", (q) => q.eq("isActive", true).eq("isApproved", true))
-      .filter((q) =>
-        q.and(q.eq(q.field("deletedAt"), undefined), q.neq(q.field("isSuspended"), true))
-      )
+    // Build the base indexed query
+    const baseQuery = args.trackId
+      ? ctx.db.query("vehicles").withIndex("by_track", (q) => q.eq("trackId", args.trackId!))
+      : ctx.db
+          .query("vehicles")
+          .withIndex("by_active_approved", (q) => q.eq("isActive", true).eq("isApproved", true))
 
-    if (trackId) {
-      vehiclesQuery = ctx.db
-        .query("vehicles")
-        .withIndex("by_track", (q) => q.eq("trackId", trackId))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("isActive"), true),
-            q.eq(q.field("isApproved"), true),
-            q.eq(q.field("deletedAt"), undefined),
-            q.neq(q.field("isSuspended"), true)
+    // Apply optional filters. When using by_track we still need to enforce
+    // active/approved/non-deleted; when using by_active_approved those are implicit.
+    const filtered = baseQuery.filter((q) => {
+      const preds = [
+        q.eq(q.field("deletedAt"), undefined),
+        q.neq(q.field("isSuspended"), true),
+      ]
+      if (args.trackId) {
+        preds.push(q.eq(q.field("isActive"), true))
+        preds.push(q.eq(q.field("isApproved"), true))
+      }
+      if (args.make) {
+        preds.push(q.eq(q.field("make"), args.make))
+      }
+      if (args.model) {
+        preds.push(q.eq(q.field("model"), args.model))
+      }
+      if (args.transmission) {
+        preds.push(q.eq(q.field("transmission"), args.transmission))
+      }
+      if (args.drivetrain) {
+        preds.push(q.eq(q.field("drivetrain"), args.drivetrain))
+      }
+      if (args.minYear !== undefined) {
+        preds.push(q.gte(q.field("year"), args.minYear))
+      }
+      if (args.maxYear !== undefined) {
+        preds.push(q.lte(q.field("year"), args.maxYear))
+      }
+      if (args.minDailyRate !== undefined) {
+        preds.push(q.gte(q.field("dailyRate"), args.minDailyRate))
+      }
+      if (args.maxDailyRate !== undefined) {
+        preds.push(q.lte(q.field("dailyRate"), args.maxDailyRate))
+      }
+      // Horsepower is optional; preserve "no listed hp = pass" behavior from the client.
+      if (args.minHorsepower !== undefined) {
+        preds.push(
+          q.or(
+            q.eq(q.field("horsepower"), undefined),
+            q.gte(q.field("horsepower"), args.minHorsepower)
           )
         )
-    }
+      }
+      if (args.maxHorsepower !== undefined) {
+        preds.push(
+          q.or(
+            q.eq(q.field("horsepower"), undefined),
+            q.lte(q.field("horsepower"), args.maxHorsepower)
+          )
+        )
+      }
+      if (args.experienceLevel) {
+        preds.push(q.eq(q.field("experienceLevel"), args.experienceLevel))
+      }
+      if (args.tireType) {
+        preds.push(q.eq(q.field("tireType"), args.tireType))
+      }
+      if (args.deliveryOnly) {
+        preds.push(q.eq(q.field("deliveryAvailable"), true))
+      }
+      return q.and(...preds)
+    })
 
-    // Get more vehicles initially to account for filtering
-    let vehicles = await vehiclesQuery.order("desc").take(limit * 2)
+    // Collect the full matching set (capped), newest first. The client handles
+    // text/amenity/rating filtering, sorting, and "load more" pagination over this.
+    let pageVehicles = await filtered.order("desc").take(SEARCH_RESULT_CAP)
 
-    // Filter out vehicles owned by the current user (if authenticated)
+    // Exclude vehicles owned by the current user
     if (currentUserId) {
-      vehicles = vehicles.filter((vehicle) => vehicle.ownerId !== currentUserId)
+      pageVehicles = pageVehicles.filter((vehicle) => vehicle.ownerId !== currentUserId)
     }
 
-    // Step 2: If dates provided, filter by availability using batch queries
-    let availableVehicles = vehicles
-
-    // Only filter by dates if both are provided and non-empty
-    if (startDate && endDate) {
-      // Batch query 1: Get blocked dates in the range (OPTIMIZED)
-      // Query without index and filter by date range and availability status
-      // This is still much faster than fetching all records (7.3M -> ~1,000)
+    // Date availability filter (only over the current page)
+    if (startDate && endDate && pageVehicles.length > 0) {
       const blockedDatesInRange = await ctx.db
         .query("availability")
         .filter((q) =>
@@ -160,14 +228,8 @@ export const searchWithAvailability = query({
           )
         )
         .collect()
-
-      // Create a Set of vehicle IDs with blocked dates for O(1) lookup
       const vehiclesWithBlockedDates = new Set(blockedDatesInRange.map((a) => a.vehicleId))
 
-      // Batch query 2: Get conflicting reservations in the range (OPTIMIZED)
-      // Use by_dates index to query reservations where startDate <= endDate (requested)
-      // Then filter by endDate >= startDate (requested) and status
-      // Overlap check: existingStart <= requestedEnd AND existingEnd >= requestedStart
       const overlappingReservations = await ctx.db
         .query("reservations")
         .withIndex("by_dates", (q) => q.lte("startDate", endDate))
@@ -178,45 +240,42 @@ export const searchWithAvailability = query({
           )
         )
         .collect()
-
-      // Additional filter: Ensure reservation actually overlaps
-      // (by_dates index might return some false positives, so we verify overlap)
-      const conflictingReservations = overlappingReservations.filter((reservation) => {
-        // Overlap check: existingStart <= requestedEnd AND existingEnd >= requestedStart
-        return reservation.startDate <= endDate && reservation.endDate >= startDate
-      })
-
-      // Create a Set of vehicle IDs with conflicting reservations
+      const conflictingReservations = overlappingReservations.filter(
+        (reservation) =>
+          reservation.startDate <= endDate && reservation.endDate >= startDate
+      )
       const vehiclesWithConflicts = new Set(conflictingReservations.map((r) => r.vehicleId))
 
-      // Step 3: Filter vehicles in memory (O(n) where n = vehicles)
-      // A vehicle is unavailable if:
-      // - It has any blocked dates in the range, OR
-      // - It has conflicting reservations
-      availableVehicles = vehicles.filter((vehicle) => {
-        // Check if vehicle has blocked dates
-        if (vehiclesWithBlockedDates.has(vehicle._id)) {
-          return false
-        }
-
-        // Check if vehicle has conflicting reservations
-        if (vehiclesWithConflicts.has(vehicle._id)) {
-          return false
-        }
-
-        return true
-      })
-
-      // Limit results after filtering
-      availableVehicles = availableVehicles.slice(0, limit)
-    } else {
-      // No date filter, just limit
-      availableVehicles = vehicles.slice(0, limit)
+      pageVehicles = pageVehicles.filter(
+        (vehicle) =>
+          !(vehiclesWithBlockedDates.has(vehicle._id) || vehiclesWithConflicts.has(vehicle._id))
+      )
     }
 
-    // Step 4: Get vehicle details (images, owner, track) - parallel queries
-    const vehiclesWithDetails = await Promise.all(
-      availableVehicles.map(async (vehicle) => {
+    // Distance filter (within the page only — cross-page distance sort isn't possible here)
+    if (
+      args.userLatitude &&
+      args.userLongitude &&
+      args.maxDistanceMiles &&
+      args.maxDistanceMiles > 0
+    ) {
+      const lat = args.userLatitude
+      const lng = args.userLongitude
+      const maxMiles = args.maxDistanceMiles
+      pageVehicles = pageVehicles.filter((vehicle) => {
+        if (!(vehicle.address?.latitude && vehicle.address?.longitude)) {
+          return false
+        }
+        return (
+          calculateDistance(lat, lng, vehicle.address.latitude, vehicle.address.longitude) <=
+          maxMiles
+        )
+      })
+    }
+
+    // Hydrate with images, owner, track
+    const page = await Promise.all(
+      pageVehicles.map(async (vehicle) => {
         const [images, owner, track] = await Promise.all([
           ctx.db
             .query("vehicleImages")
@@ -232,7 +291,6 @@ export const searchWithAvailability = query({
 
         const hostStripeReady =
           !!owner?.stripeAccountId && owner.stripeAccountStatus === "enabled"
-
         const optimizedImages = images.filter((image) => image.r2Key)
 
         return {
@@ -245,60 +303,7 @@ export const searchWithAvailability = query({
       })
     )
 
-    let finalVehicles = vehiclesWithDetails
-
-    // Step 5: Apply distance-based filtering if coordinates provided
-    if (
-      args.userLatitude &&
-      args.userLongitude &&
-      args.maxDistanceMiles &&
-      args.maxDistanceMiles > 0
-    ) {
-      finalVehicles = finalVehicles.filter((vehicle) => {
-        // Skip vehicles without coordinates
-        if (!(vehicle.address?.latitude && vehicle.address?.longitude)) {
-          return false
-        }
-
-        // Calculate distance
-        const distance = calculateDistance(
-          args.userLatitude!,
-          args.userLongitude!,
-          vehicle.address.latitude,
-          vehicle.address.longitude
-        )
-
-        // Filter by maximum distance
-        return distance <= args.maxDistanceMiles!
-      })
-
-      // Sort by distance (closest first)
-      finalVehicles.sort((a, b) => {
-        if (!(a.address?.latitude && a.address?.longitude)) {
-          return 1
-        }
-        if (!(b.address?.latitude && b.address?.longitude)) {
-          return -1
-        }
-
-        const distanceA = calculateDistance(
-          args.userLatitude!,
-          args.userLongitude!,
-          a.address.latitude,
-          a.address.longitude
-        )
-        const distanceB = calculateDistance(
-          args.userLatitude!,
-          args.userLongitude!,
-          b.address.latitude,
-          b.address.longitude
-        )
-
-        return distanceA - distanceB
-      })
-    }
-
-    return finalVehicles
+    return page
   },
 })
 
@@ -578,7 +583,7 @@ export const createVehicleWithImages = mutation({
     const vehicleId = await ctx.db.insert("vehicles", {
       ownerId: userId,
       trackId: args.trackId,
-      make: args.make,
+      make: normalizeMake(args.make),
       model: args.model,
       year: args.year,
       dailyRate: args.dailyRate,
@@ -755,6 +760,7 @@ export const update = mutation({
     // Save the address without coordinates first (geocoding happens async)
     await ctx.db.patch(args.id, {
       ...updateData,
+      ...(updateData.make !== undefined ? { make: normalizeMake(updateData.make) } : {}),
       updatedAt: Date.now(),
     })
 
@@ -767,6 +773,76 @@ export const update = mutation({
     }
 
     return args.id
+  },
+})
+
+// One-time backfill: normalize every existing vehicle's `make` to its canonical form.
+// Idempotent — safe to re-run (already-normalized rows are skipped). Run from the
+// Convex dashboard's function runner or `npx convex run vehicles:normalizeAllMakes`.
+export const normalizeAllMakes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const vehicles = await ctx.db.query("vehicles").collect()
+    let updated = 0
+    for (const vehicle of vehicles) {
+      const normalized = normalizeMake(vehicle.make)
+      if (normalized && normalized !== vehicle.make) {
+        await ctx.db.patch(vehicle._id, { make: normalized })
+        updated++
+      }
+    }
+    return { scanned: vehicles.length, updated }
+  },
+})
+
+// Vehicles that have an address ZIP but no geocoded coordinates yet.
+export const listVehiclesMissingCoordinates = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const vehicles = await ctx.db.query("vehicles").collect()
+    return vehicles
+      .filter(
+        (vehicle) =>
+          !vehicle.deletedAt &&
+          vehicle.address?.zipCode &&
+          !(vehicle.address?.latitude && vehicle.address?.longitude)
+      )
+      .map((vehicle) => ({
+        vehicleId: vehicle._id,
+        address: {
+          street: vehicle.address?.street,
+          city: vehicle.address?.city,
+          state: vehicle.address?.state,
+          zipCode: vehicle.address?.zipCode ?? "",
+        },
+      }))
+  },
+})
+
+// One-time backfill: geocode every existing vehicle that's missing coordinates so
+// distance filtering can include it. Idempotent — already-geocoded vehicles are
+// skipped. Run with `npx convex run vehicles:backfillVehicleCoordinates`.
+export const backfillVehicleCoordinates = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ scanned: number; updated: number }> => {
+    const { geocodeAddress } = await import("./geocoding")
+    const todo: Array<{
+      vehicleId: Id<"vehicles">
+      address: { street?: string; city?: string; state?: string; zipCode: string }
+    }> = await ctx.runQuery(internal.vehicles.listVehiclesMissingCoordinates, {})
+    let updated = 0
+    for (const item of todo) {
+      const result = await geocodeAddress(item.address)
+      if (result) {
+        await ctx.runMutation(internal.vehicles.updateVehicleCoordinates, {
+          vehicleId: item.vehicleId,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        })
+        updated++
+      }
+    }
+    return { scanned: todo.length, updated }
   },
 })
 

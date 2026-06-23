@@ -22,7 +22,12 @@ export const createNotification = internalMutation({
       v.literal("endorsement_received"),
       v.literal("team_event"),
       v.literal("profile_view"),
-      v.literal("damage_invoice")
+      v.literal("damage_invoice"),
+      v.literal("coaching_request_pending"),
+      v.literal("coaching_approved"),
+      v.literal("coaching_declined"),
+      v.literal("coaching_cancelled"),
+      v.literal("coaching_completed")
     ),
     title: v.string(),
     message: v.string(),

@@ -37,7 +37,7 @@ function getDateLabel(timestamp: number): string {
 
   if (messageDay.getTime() === today.getTime()) return "Today"
   if (messageDay.getTime() === yesterday.getTime()) return "Yesterday"
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",

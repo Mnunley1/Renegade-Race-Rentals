@@ -136,7 +136,7 @@ function CheckoutPageContent() {
     availability
       ?.filter((item: { isAvailable: boolean; date: string }) => !item.isAvailable)
       .map((item: { date: string }) => parseLocalDate(item.date))
-      .filter((d): d is Date => d !== null) || []
+      .filter((d: Date | null): d is Date => d !== null) || []
 
   // Combine blocked dates (availability already accounts for reservations)
   const unavailableDates = new Set(blockedDates.map((d: Date) => formatDateToISO(d)))

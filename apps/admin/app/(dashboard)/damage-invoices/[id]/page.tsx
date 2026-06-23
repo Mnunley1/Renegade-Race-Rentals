@@ -156,12 +156,28 @@ export default function DamageInvoiceDetailPage() {
             </div>
             <div>
               <Label>Created</Label>
-              <p className="mt-1">{new Date(invoice.createdAt).toLocaleString()}</p>
+              <p className="mt-1">
+                {new Date(invoice.createdAt).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
             {invoice.paidAt && (
               <div>
                 <Label>Paid At</Label>
-                <p className="mt-1">{new Date(invoice.paidAt).toLocaleString()}</p>
+                <p className="mt-1">
+                  {new Date(invoice.paidAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
             )}
             {invoice.adminNotes && (

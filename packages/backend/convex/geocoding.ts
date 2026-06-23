@@ -2,6 +2,9 @@
  * Geocoding utility functions using Google Maps Geocoding API
  */
 
+import { v } from "convex/values"
+import { action } from "./_generated/server"
+
 export type Address = {
   street?: string
   city?: string
@@ -28,15 +31,21 @@ export async function geocodeAddress(address: Address): Promise<GeocodeResult | 
     return null
   }
 
-  // Construct the full address string
-  const parts = [address.street, address.city, address.state, address.zipCode].filter(Boolean)
-  const fullAddress = parts.join(", ")
-
-  // Encode the address for URL
-  const encodedAddress = encodeURIComponent(fullAddress)
+  // Build the request. A bare US ZIP doesn't resolve reliably via the `address`
+  // param (Google returns ZERO_RESULTS), so use component filtering for ZIP-only
+  // lookups and the full address string when street/city/state are present.
+  const streetParts = [address.street, address.city, address.state].filter(Boolean)
+  const params = new URLSearchParams()
+  if (streetParts.length > 0) {
+    params.set("address", [...streetParts, address.zipCode].filter(Boolean).join(", "))
+    params.set("components", "country:US")
+  } else {
+    params.set("components", `country:US|postal_code:${address.zipCode}`)
+  }
+  params.set("key", apiKey)
 
   // Google Maps Geocoding API endpoint
-  const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`
+  const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`
 
   try {
     const response = await fetch(geocodingUrl)
@@ -79,6 +88,16 @@ export async function geocodeAddress(address: Address): Promise<GeocodeResult | 
 export function geocodeZipCode(zipCode: string): Promise<GeocodeResult | null> {
   return geocodeAddress({ zipCode })
 }
+
+/**
+ * Public action: geocode a ZIP code to coordinates using the Convex-side
+ * GOOGLE_MAPS_API_KEY. Lets the client geocode without the web app needing its own
+ * copy of the key. Returns null if the ZIP can't be resolved.
+ */
+export const lookupZip = action({
+  args: { zipCode: v.string() },
+  handler: (_ctx, args): Promise<GeocodeResult | null> => geocodeZipCode(args.zipCode),
+})
 
 /**
  * Geocode an address and return it with coordinates

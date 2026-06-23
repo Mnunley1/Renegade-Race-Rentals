@@ -14,14 +14,97 @@ import { api } from "@/lib/convex"
 import { formatDateForDisplay } from "@/lib/date-utils"
 import { r2Url } from "@/lib/r2-url"
 
+function CoachingSuccessCard({ bookingId }: { bookingId: Id<"coachingBookings"> }) {
+  const booking = useQuery(api.coachingBookings.getById, { id: bookingId })
+
+  if (!booking) {
+    return (
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Loading booking details...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const sessionLabel =
+    booking.sessionType === "hourly"
+      ? `${booking.hours}-hour session`
+      : booking.sessionType === "half_day"
+        ? "Half-day session"
+        : "Full-day session"
+
+  return (
+    <div className="container mx-auto max-w-2xl px-4 py-8">
+      <Card>
+        <CardContent className="py-12">
+          <div className="mx-auto max-w-xl text-center">
+            <CheckCircle2 className="mx-auto mb-4 size-16 text-green-500" />
+            <h1 className="mb-2 font-bold text-4xl">Session Confirmed!</h1>
+            <p className="mb-8 text-lg text-muted-foreground">
+              Your payment went through. {booking.coach?.name || "Your coach"} has been notified.
+            </p>
+
+            <div className="mb-8 rounded-lg border bg-muted/50 p-6 text-left">
+              <div className="mb-4 flex items-center gap-2">
+                <Calendar className="size-4 text-muted-foreground" />
+                <span className="font-medium">
+                  {new Date(`${booking.startDate}T00:00:00`).toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  {booking.startTime ? ` · ${booking.startTime}` : ""}
+                </span>
+              </div>
+              <div className="mb-4 flex items-center gap-2">
+                <Clock className="size-4 text-muted-foreground" />
+                <span>{sessionLabel}</span>
+              </div>
+              {booking.eventName && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="size-4 text-muted-foreground" />
+                  <span>{booking.eventName}</span>
+                </div>
+              )}
+              <Separator className="my-4" />
+              <div className="flex justify-between font-semibold">
+                <span>Total paid</span>
+                <span>${(booking.totalAmount / 100).toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Button asChild>
+                <Link href="/trips">View my trips</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/coaches/${booking.coachProfileId}`}>Back to coach</Link>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const reservationId = searchParams.get("reservationId")
+  const coachingBookingId = searchParams.get("coachingBookingId")
 
   const reservation = useQuery(
     api.reservations.getById,
     reservationId ? { id: reservationId as Id<"reservations"> } : "skip"
   )
+
+  if (coachingBookingId) {
+    return <CoachingSuccessCard bookingId={coachingBookingId as Id<"coachingBookings">} />
+  }
 
   if (!reservationId) {
     return (

@@ -7,7 +7,8 @@ import { Card, CardContent } from "@workspace/ui/components/card"
 import { Dialog, DialogContent } from "@workspace/ui/components/dialog"
 import { cn } from "@workspace/ui/lib/utils"
 import { useMutation, useQuery } from "convex/react"
-import { Car, Gauge, Heart, LogIn, MapPin, Star, UserPlus } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { Car, Cog, Gauge, Heart, LogIn, MapPin, Star, UserPlus } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -37,6 +38,7 @@ interface VehicleCardProps extends ComponentProps<"div"> {
   datesSelected?: boolean
   bookingCount?: number
   hostStripeReady?: boolean
+  layout?: "grid" | "list"
 }
 
 export function VehicleCard({
@@ -58,6 +60,7 @@ export function VehicleCard({
   datesSelected,
   bookingCount,
   hostStripeReady,
+  layout = "grid",
   className,
   ...props
 }: VehicleCardProps) {
@@ -123,136 +126,189 @@ export function VehicleCard({
 
   const weekendPrice = Math.round(pricePerDay * 2.5)
 
-  return (
+  // Performance spec strip (Turo-style icon + value units)
+  const specs: { icon: LucideIcon; label: string }[] = []
+  if (horsepower && horsepower > 0) specs.push({ icon: Gauge, label: `${horsepower} HP` })
+  if (transmission) specs.push({ icon: Cog, label: transmission })
+  if (drivetrain) specs.push({ icon: Car, label: drivetrain })
+
+  // Shared image block (photo + gradients + badges + favorite)
+  const mediaInner = (
     <>
-      <Link className="block h-full" href={vehicleUrl}>
-        <Card
+      {imageKey || image ? (
+        <Image
+          alt={name}
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          fill
+          quality={80}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          src={imageKey ? r2Url(imageKey) : image}
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center bg-muted">
+          <Car className="size-16 text-muted-foreground/50" />
+        </div>
+      )}
+
+      {/* Legibility gradients */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+
+      {/* Top Badges */}
+      <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-2">
+        {track && (
+          <Badge className="border border-white/15 bg-black/55 text-white text-xs backdrop-blur-md hover:bg-black/55">
+            {track}
+          </Badge>
+        )}
+        {datesSelected && (
+          <Badge className="border border-white/15 bg-green-600/90 text-white text-xs backdrop-blur-md hover:bg-green-600/90">
+            Available
+          </Badge>
+        )}
+        {bookingCount !== undefined && bookingCount > 0 && (
+          <Badge className="border border-white/15 bg-amber-600/90 text-white text-xs backdrop-blur-md hover:bg-amber-600/90">
+            Booked {bookingCount}x
+          </Badge>
+        )}
+        {hostStripeReady === false && (
+          <Badge className="border border-white/15 bg-blue-600/90 text-white text-xs backdrop-blur-md hover:bg-blue-600/90">
+            Coming Soon
+          </Badge>
+        )}
+      </div>
+
+      {/* Favorite Button */}
+      <Button
+        className="absolute top-3 right-3 z-20 size-9 rounded-full border border-white/20 bg-black/30 backdrop-blur-md transition-colors hover:bg-black/50"
+        onClick={handleFavoriteClick}
+        size="icon"
+        variant="ghost"
+      >
+        <Heart
           className={cn(
-            "group relative flex h-full cursor-pointer flex-col overflow-hidden border border-border bg-card transition-colors duration-200 hover:border-primary/40",
-            className
+            "size-5 transition-all",
+            isFavorite === true
+              ? "scale-110 fill-red-500 text-red-500"
+              : "text-white group-hover:text-red-400"
           )}
-          {...props}
-        >
-          {/* Image Section */}
-          <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-muted">
-            {imageKey || image ? (
-              <Image
-                alt={name}
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                fill
-                quality={80}
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                src={imageKey ? r2Url(imageKey) : image}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center bg-muted">
-                <Car className="size-16 text-muted-foreground/50" />
+        />
+      </Button>
+    </>
+  )
+
+  // Shared rating element
+  const ratingEl =
+    rating !== undefined && rating > 0 ? (
+      <div className="flex shrink-0 items-center gap-1 pt-0.5">
+        <Star className="size-4 fill-amber-400 text-amber-400" />
+        <span className="font-medium text-sm">{rating.toFixed(1)}</span>
+        {reviews !== undefined && reviews > 0 && (
+          <span className="text-muted-foreground text-xs">({reviews})</span>
+        )}
+      </div>
+    ) : null
+
+  // Shared spec items
+  const specItems = specs.map((spec, i) => (
+    <div
+      className={cn("flex items-center gap-1.5", i > 0 && "border-border border-l pl-3")}
+      key={spec.label}
+    >
+      <spec.icon className="size-4 shrink-0 text-primary/70" />
+      <span className="font-medium text-foreground text-xs">{spec.label}</span>
+    </div>
+  ))
+
+  const cardBody =
+    layout === "list" ? (
+      <Card
+        className={cn(
+          "group relative flex cursor-pointer flex-row overflow-hidden border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_16px_32px_-12px_rgba(0,0,0,0.3)]",
+          className
+        )}
+        {...props}
+      >
+        <div className="relative w-32 shrink-0 overflow-hidden bg-muted sm:w-56 lg:w-64">
+          {mediaInner}
+        </div>
+        <CardContent className="flex flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="line-clamp-1 font-semibold text-base tracking-tight transition-colors group-hover:text-primary sm:text-lg">
+                {year} {make} {model}
+              </h3>
+              {ratingEl}
+            </div>
+            {location && (
+              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <MapPin className="size-3.5 shrink-0" />
+                <span className="truncate text-sm">{location}</span>
               </div>
             )}
-
-            <div className="pointer-events-none absolute inset-0 bg-black/20" />
-
-            {/* Top Badges */}
-            <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-2">
-              {track && (
-                <Badge className="border-0 bg-black/70 text-white text-xs hover:bg-black/70">
-                  {track}
-                </Badge>
-              )}
-              {horsepower && horsepower > 0 && (
-                <Badge
-                  className="border-0 bg-primary/90 text-primary-foreground text-xs hover:bg-primary/90"
-                  variant="secondary"
-                >
-                  <Gauge className="mr-1 size-3" />
-                  {horsepower} HP
-                </Badge>
-              )}
-              {datesSelected && (
-                <Badge className="border-0 bg-green-600 text-white text-xs hover:bg-green-600">
-                  Available
-                </Badge>
-              )}
-              {bookingCount !== undefined && bookingCount > 0 && (
-                <Badge className="border-0 bg-amber-600/90 text-white text-xs hover:bg-amber-600/90">
-                  Booked {bookingCount}x
-                </Badge>
-              )}
-              {hostStripeReady === false && (
-                <Badge className="border-0 bg-blue-600/90 text-white text-xs hover:bg-blue-600/90">
-                  Coming Soon
-                </Badge>
-              )}
-            </div>
-
-            {/* Favorite Button */}
-            <Button
-              className="absolute top-3 right-3 z-10 size-9 rounded-full bg-white/90 transition-colors hover:bg-white"
-              onClick={handleFavoriteClick}
-              size="icon"
-              variant="ghost"
-            >
-              <Heart
-                className={cn(
-                  "size-5 transition-all",
-                  isFavorite === true
-                    ? "scale-110 fill-red-500 text-red-500"
-                    : "text-gray-600 group-hover:text-red-500"
-                )}
-              />
-            </Button>
-
-            {/* Price Tag */}
-            <div className="absolute bottom-3 left-3 z-10">
-              <div className="flex items-baseline gap-1 rounded-md bg-white/95 px-3 py-1.5">
-                <span className="font-bold text-gray-900 text-lg">${pricePerDay}</span>
-                <span className="text-gray-600 text-xs">/day</span>
-                <span className="ml-1 text-gray-400 text-xs">· ${weekendPrice}/wknd</span>
+          </div>
+          <div className="flex items-end justify-between gap-4 border-t pt-3">
+            <div className="flex flex-wrap items-center gap-3">{specItems}</div>
+            <div className="shrink-0 text-right">
+              <div className="flex items-baseline justify-end gap-1">
+                <span className="font-bold text-xl tracking-tight">${pricePerDay}</span>
+                <span className="text-muted-foreground text-sm">/day</span>
               </div>
+              <p className="text-muted-foreground text-xs">${weekendPrice} / weekend</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    ) : (
+      <Card
+        className={cn(
+          "group relative flex h-full cursor-pointer flex-col overflow-hidden border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.35)]",
+          className
+        )}
+        {...props}
+      >
+        {/* Racing-stripe accent — sweeps in on hover */}
+        <div className="absolute top-0 right-0 left-0 z-20 h-1 origin-left scale-x-0 bg-gradient-to-r from-primary to-primary/40 transition-transform duration-300 group-hover:scale-x-100" />
 
-          {/* Content Section */}
-          <CardContent className="flex flex-1 flex-col p-4">
-            <h3 className="mb-2 line-clamp-2 font-semibold text-base leading-snug tracking-tight sm:text-lg">
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-muted">
+          {mediaInner}
+          {/* Price Tag */}
+          <div className="absolute right-3 bottom-3 left-3 z-20 flex items-end justify-between">
+            <div className="flex items-baseline gap-1.5 rounded-lg border border-white/10 bg-black/55 px-3 py-2 backdrop-blur-md">
+              <span className="font-bold text-lg text-white tracking-tight">${pricePerDay}</span>
+              <span className="text-white/70 text-xs">/day</span>
+              <span className="text-white/40 text-xs">· ${weekendPrice} wknd</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <CardContent className="flex flex-1 flex-col p-5">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="line-clamp-2 font-semibold text-base leading-snug tracking-tight transition-colors group-hover:text-primary sm:text-lg">
               {year} {make} {model}
             </h3>
+            {ratingEl}
+          </div>
 
-            <div className="mt-auto flex items-center justify-between gap-2">
-              {location && (
-                <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                  <MapPin className="size-3.5 shrink-0" />
-                  <span className="truncate text-sm">{location}</span>
-                </div>
-              )}
-
-              {rating !== undefined && rating > 0 && (
-                <div className="flex shrink-0 items-center gap-1">
-                  <Star className="size-4 fill-amber-400 text-amber-400" />
-                  <span className="font-medium text-sm">{rating.toFixed(1)}</span>
-                  {reviews !== undefined && reviews > 0 && (
-                    <span className="text-muted-foreground text-xs">({reviews})</span>
-                  )}
-                </div>
-              )}
+          {location && (
+            <div className="mt-2 flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" />
+              <span className="truncate text-sm">{location}</span>
             </div>
+          )}
 
-            {(transmission || drivetrain) && (
-              <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
-                {transmission && (
-                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground text-xs">
-                    {transmission}
-                  </span>
-                )}
-                {drivetrain && (
-                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground text-xs">
-                    {drivetrain}
-                  </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {specs.length > 0 && (
+            <div className="mt-auto flex items-center gap-3 border-t pt-3.5">{specItems}</div>
+          )}
+        </CardContent>
+      </Card>
+    )
+
+  return (
+    <>
+      <Link className={cn("block", layout === "grid" && "h-full")} href={vehicleUrl}>
+        {cardBody}
       </Link>
 
       {/* Login Dialog - Outside Link to fix nesting bug */}
@@ -297,7 +353,7 @@ export function VehicleCard({
 
               <div className="mt-6 text-center">
                 <p className="text-muted-foreground text-sm">
-                  Join thousands of racing enthusiasts
+                  Join a community of racing enthusiasts
                 </p>
               </div>
             </CardContent>

@@ -160,7 +160,7 @@ export function DriverPortfolio({ driverProfileId, isOwner }: DriverPortfolioPro
           <p className="py-4 text-center text-muted-foreground text-sm">No media yet</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {media.map((item) => (
+            {media.map((item: any) => (
               <div className="group relative aspect-square" key={item._id}>
                 <button
                   className="size-full cursor-pointer overflow-hidden rounded-lg bg-muted text-left"
