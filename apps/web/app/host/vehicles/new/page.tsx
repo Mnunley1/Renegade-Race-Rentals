@@ -79,6 +79,7 @@ export default function CreateVehiclePage() {
     model: "",
     year: new Date().getFullYear(),
     dailyRate: "",
+    damageDepositAmount: "",
     description: "",
     horsepower: "",
     transmission: "",
@@ -283,6 +284,9 @@ export default function CreateVehiclePage() {
         model: vehicleFormData.model,
         year: Number(vehicleFormData.year),
         dailyRate: Number(vehicleFormData.dailyRate),
+        damageDepositAmount: vehicleFormData.damageDepositAmount
+          ? Number(vehicleFormData.damageDepositAmount) * 100
+          : undefined,
         description: vehicleFormData.description,
         horsepower: Number(vehicleFormData.horsepower),
         transmission: vehicleFormData.transmission,
@@ -491,6 +495,21 @@ export default function CreateVehiclePage() {
                   type="number"
                   value={vehicleFormData.dailyRate}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="damageDepositAmount">ACH Damage Deposit ($)</Label>
+                <Input
+                  id="damageDepositAmount"
+                  min="0"
+                  name="damageDepositAmount"
+                  onChange={handleVehicleChange}
+                  placeholder="Optional"
+                  type="number"
+                  value={vehicleFormData.damageDepositAmount}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Collected only when an invoice is paid with ACH/debit.
+                </p>
               </div>
             </div>
 

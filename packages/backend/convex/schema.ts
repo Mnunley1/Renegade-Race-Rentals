@@ -146,6 +146,7 @@ export default defineSchema({
     model: v.string(),
     year: v.number(),
     dailyRate: v.number(),
+    damageDepositAmount: v.optional(v.number()), // Refundable deposit in cents for ACH/debit invoice payments
     description: v.string(),
     horsepower: v.optional(v.number()),
     transmission: v.optional(v.string()),
@@ -807,7 +808,8 @@ export default defineSchema({
       v.literal("user"),
       v.literal("vehicle"),
       v.literal("dispute"),
-      v.literal("damage_invoice")
+      v.literal("damage_invoice"),
+      v.literal("invoice")
     ),
     entityId: v.string(), // ID of the entity being changed
     action: v.string(), // e.g., "status_change", "create", "update", "delete"
@@ -853,7 +855,8 @@ export default defineSchema({
       v.literal("endorsement_received"),
       v.literal("team_event"),
       v.literal("profile_view"),
-      v.literal("damage_invoice")
+      v.literal("damage_invoice"),
+      v.literal("invoice")
     ),
     title: v.string(),
     message: v.string(),
@@ -1176,6 +1179,7 @@ export default defineSchema({
     relatedEntity: v.optional(
       v.object({
         type: v.union(
+          v.literal("vehicle"),
           v.literal("rental"),
           v.literal("coaching"),
           v.literal("damage"),
@@ -1188,21 +1192,44 @@ export default defineSchema({
     ),
     /** Optional document attached for e-sign (Phase 1d). */
     documentId: v.optional(v.id("documents")),
+    /** Vehicle whose owner-defined damage deposit applies when paying by ACH/debit. */
+    depositVehicleId: v.optional(v.id("vehicles")),
     /** Stripe + checkout state. */
     stripeInvoiceId: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripeCheckoutUrl: v.optional(v.string()),
+    stripeInvoicePdf: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
     stripeChargeId: v.optional(v.string()),
+    selectedPaymentMethod: v.optional(
+      v.union(v.literal("stripe_card"), v.literal("stripe_ach"), v.literal("external"))
+    ),
+    amountDue: v.optional(v.number()),
     /** Snapshot of platform fee in cents. */
     platformFee: v.optional(v.number()),
     /** Sender → owner of money received (in cents, after platform fee). */
     senderAmount: v.optional(v.number()),
+    damageDepositAmount: v.optional(v.number()),
+    depositStatus: v.optional(
+      v.union(
+        v.literal("not_required"),
+        v.literal("pending"),
+        v.literal("held"),
+        v.literal("partially_refunded"),
+        v.literal("refunded"),
+        v.literal("applied")
+      )
+    ),
+    depositRefundAmount: v.optional(v.number()),
+    depositRefundReason: v.optional(v.string()),
+    stripeDepositRefundId: v.optional(v.string()),
+    depositRefundedAt: v.optional(v.number()),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),
       v.literal("viewed"),
       v.literal("payment_pending"),
+      v.literal("processing"),
       v.literal("paid"),
       v.literal("overdue"),
       v.literal("cancelled"),
@@ -1213,9 +1240,7 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     viewedAt: v.optional(v.number()),
     /** Source legacy table during migration window (Phase 1c). */
-    legacySource: v.optional(
-      v.union(v.literal("coachInvoices"), v.literal("damageInvoices"))
-    ),
+    legacySource: v.optional(v.union(v.literal("coachInvoices"), v.literal("damageInvoices"))),
     legacyId: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdAt: v.number(),
@@ -1323,11 +1348,7 @@ export default defineSchema({
     typedSignature: v.optional(v.string()),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("signed"),
-      v.literal("declined")
-    ),
+    status: v.union(v.literal("pending"), v.literal("signed"), v.literal("declined")),
     signedAt: v.optional(v.number()),
     declinedAt: v.optional(v.number()),
     declinedReason: v.optional(v.string()),
@@ -1352,11 +1373,7 @@ export default defineSchema({
     location: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.optional(v.string()),
-    source: v.union(
-      v.literal("race_monitor"),
-      v.literal("manual"),
-      v.literal("iracing")
-    ),
+    source: v.union(v.literal("race_monitor"), v.literal("manual"), v.literal("iracing")),
     isVerified: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1444,11 +1461,7 @@ export default defineSchema({
     userId: v.string(),
     /** Optional team subscription. */
     teamId: v.optional(v.id("teams")),
-    tier: v.union(
-      v.literal("driver_pro"),
-      v.literal("team_pro"),
-      v.literal("team_elite")
-    ),
+    tier: v.union(v.literal("driver_pro"), v.literal("team_pro"), v.literal("team_elite")),
     status: v.union(
       v.literal("trialing"),
       v.literal("active"),
@@ -1513,11 +1526,7 @@ export default defineSchema({
       v.literal("team_principal"),
       v.literal("sponsor_brand")
     ),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("rejected")
-    ),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
     evidenceR2Keys: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
     reviewedBy: v.optional(v.string()),
