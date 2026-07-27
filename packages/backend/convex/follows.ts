@@ -107,7 +107,7 @@ export const getFollowerCounts = query({
     teamId: v.optional(v.id("teams")),
   },
   handler: async (ctx, args) => {
-    if (!args.userId && !args.teamId) {
+    if (!(args.userId || args.teamId)) {
       return { followers: 0, following: 0 }
     }
     let followers = 0

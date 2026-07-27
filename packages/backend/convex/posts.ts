@@ -50,7 +50,7 @@ export const createPost = mutation({
           q.eq("teamId", args.teamId as Id<"teams">).eq("userId", user.externalId)
         )
         .first()
-      if (!isOwner && !membership) {
+      if (!(isOwner || membership)) {
         throw new Error("Not authorized to post on behalf of this team")
       }
     }

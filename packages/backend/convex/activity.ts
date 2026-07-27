@@ -32,8 +32,8 @@ export const logActivityEvent = internalMutation({
     metadata: v.optional(v.any()),
     visibility: v.union(v.literal("public"), v.literal("followers")),
   },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("activityEvents", {
+  handler: async (ctx, args) =>
+    await ctx.db.insert("activityEvents", {
       actorId: args.actorId,
       type: args.type,
       targetType: args.targetType,
@@ -41,8 +41,7 @@ export const logActivityEvent = internalMutation({
       metadata: args.metadata,
       visibility: args.visibility,
       createdAt: Date.now(),
-    })
-  },
+    }),
 })
 
 /**
