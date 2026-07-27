@@ -812,7 +812,7 @@ export default defineSchema({
       v.literal("vehicle"),
       v.literal("dispute"),
       v.literal("damage_invoice"),
-      v.literal("invoice")
+      v.literal("invoice"),
       v.literal("coach_profile"),
       v.literal("coaching_booking"),
       v.literal("coaching_review")
@@ -862,7 +862,7 @@ export default defineSchema({
       v.literal("team_event"),
       v.literal("profile_view"),
       v.literal("damage_invoice"),
-      v.literal("invoice")
+      v.literal("invoice"),
       v.literal("coaching_request_pending"),
       v.literal("coaching_approved"),
       v.literal("coaching_declined"),

@@ -10,7 +10,7 @@ import {
   query,
 } from "./_generated/server"
 import { getWelcomeEmailTemplate, sendTransactionalEmail } from "./emails"
-import { r2 } from "./r2"
+import { imagePresets, r2 } from "./r2"
 
 export const current = query({
   args: {},

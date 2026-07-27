@@ -74,6 +74,7 @@ registerRoutes(http, components.stripe, {
               stripeChargeId: (paymentIntent.latest_charge as string) || undefined,
             })
           }
+        }
       } else if (paymentIntent.metadata?.type === "coaching_booking") {
         // Handle coaching booking payment
         const bookingId = paymentIntent.metadata.coachingBookingId
@@ -116,11 +117,6 @@ registerRoutes(http, components.stripe, {
           paymentId: payment._id,
           failureReason: paymentIntent.last_payment_error?.message,
         })
-      } else {
-        await ctx.runMutation(internal.invoices.handlePaymentFailed, {
-          stripePaymentIntentId: paymentIntent.id,
-          failureReason: paymentIntent.last_payment_error?.message,
-        })
       } else if (paymentIntent.metadata?.type === "coaching_booking") {
         const bookingId = paymentIntent.metadata.coachingBookingId
         if (bookingId) {
@@ -129,6 +125,11 @@ registerRoutes(http, components.stripe, {
             failureReason: paymentIntent.last_payment_error?.message,
           })
         }
+      } else {
+        await ctx.runMutation(internal.invoices.handlePaymentFailed, {
+          stripePaymentIntentId: paymentIntent.id,
+          failureReason: paymentIntent.last_payment_error?.message,
+        })
       }
 
       // Record successful processing
