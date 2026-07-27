@@ -1,4 +1,8 @@
-import { calculateUserReviewStats, calculateVehicleReviewStats } from "./reviewStats"
+import {
+  calculateCoachReviewStats,
+  calculateUserReviewStats,
+  calculateVehicleReviewStats,
+} from "./reviewStats"
 
 // ============================================================================
 // calculateUserReviewStats
@@ -156,5 +160,36 @@ describe("calculateVehicleReviewStats", () => {
     const result = calculateVehicleReviewStats([{ rating: 3 }, { rating: 3 }, { rating: 3 }])
     expect(result.averageRating).toBe(3)
     expect(result.ratingBreakdown).toEqual({ 1: 0, 2: 0, 3: 3, 4: 0, 5: 0 })
+  })
+})
+
+// ============================================================================
+// calculateCoachReviewStats
+// ============================================================================
+
+describe("calculateCoachReviewStats", () => {
+  it("returns zeros for empty reviews", () => {
+    const result = calculateCoachReviewStats([])
+    expect(result.averageRating).toBe(0)
+    expect(result.totalReviews).toBe(0)
+    expect(result.ratingBreakdown).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 })
+    expect(result.categoryAverages).toEqual({ communication: 0, knowledge: 0, value: 0 })
+  })
+
+  it("averages overall rating and rounds to one decimal", () => {
+    const result = calculateCoachReviewStats([{ rating: 5 }, { rating: 4 }, { rating: 4 }])
+    expect(result.averageRating).toBe(4.3)
+    expect(result.totalReviews).toBe(3)
+    expect(result.ratingBreakdown).toEqual({ 1: 0, 2: 0, 3: 0, 4: 2, 5: 1 })
+  })
+
+  it("averages only the categories that were provided", () => {
+    const result = calculateCoachReviewStats([
+      { rating: 5, communication: 5, knowledge: 4 },
+      { rating: 3, communication: 3, value: 2 },
+    ])
+    expect(result.categoryAverages.communication).toBe(4)
+    expect(result.categoryAverages.knowledge).toBe(4)
+    expect(result.categoryAverages.value).toBe(2)
   })
 })

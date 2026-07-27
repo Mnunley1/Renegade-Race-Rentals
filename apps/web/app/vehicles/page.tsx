@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useAction, useQuery } from "convex/react"
 import { Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
@@ -89,7 +89,10 @@ function VehiclesPageContent() {
       locationZipCode: searchParams.get("zip") || storedFilters?.locationZipCode || "",
       locationLabel: searchParams.get("locLabel") || storedFilters?.locationLabel || "",
       maxDistance: Number(searchParams.get("dist")) || storedFilters?.maxDistance || 0,
-      selectedSafetyEquipment: storedFilters?.selectedSafetyEquipment || [],
+      selectedSafetyEquipment:
+        searchParams.get("safety")?.split(",").filter(Boolean) ||
+        storedFilters?.selectedSafetyEquipment ||
+        [],
       selectedExperienceLevel:
         searchParams.get("expLevel") || storedFilters?.selectedExperienceLevel || "all",
       selectedTireType: searchParams.get("tire") || storedFilters?.selectedTireType || "all",
@@ -101,7 +104,6 @@ function VehiclesPageContent() {
 
   // View & pagination state
   const [viewMode, setViewMode] = useState<ViewMode>(initialState.viewMode)
-  const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 12
 
   // Filter state
@@ -154,7 +156,7 @@ function VehiclesPageContent() {
     initialState.selectedExperienceLevel || "all"
   )
   const [selectedTireType, setSelectedTireType] = useState(initialState.selectedTireType || "all")
-  const [deliveryOnly, setDeliveryOnly] = useState(initialState.deliveryOnly)
+  const [deliveryOnly, setDeliveryOnly] = useState(Boolean(initialState.deliveryOnly))
 
   // Filter sheet state (for sub-xl screens)
 
@@ -207,31 +209,32 @@ function VehiclesPageContent() {
     )
   }, [])
 
-  const geocodeZipCode = useCallback(async (zipCode: string) => {
-    if (!zipCode || zipCode.length < 5) {
-      return
-    }
-    setIsGeocodingZip(true)
-    setLocationError(null)
-    try {
-      const response = await fetch(`/api/geocode?address=${encodeURIComponent(zipCode)}`)
-      const data = await response.json()
-      if (data.status === "OK" && data.results?.[0]) {
-        const location = data.results[0].geometry.location
-        setUserLocation({ lat: location.lat, lng: location.lng })
-        setLocationLabel(zipCode)
-        setLocationError(null)
-      } else if (data.status === "ZERO_RESULTS") {
-        setLocationError("ZIP code not found")
-      } else {
-        setLocationError("Unable to find location for this ZIP code")
+  const lookupZip = useAction(api.geocoding.lookupZip)
+
+  const geocodeZipCode = useCallback(
+    async (zipCode: string) => {
+      if (!zipCode || zipCode.length < 5) {
+        return
       }
-    } catch {
-      setLocationError("Failed to geocode ZIP code")
-    } finally {
-      setIsGeocodingZip(false)
-    }
-  }, [])
+      setIsGeocodingZip(true)
+      setLocationError(null)
+      try {
+        const result = await lookupZip({ zipCode })
+        if (result) {
+          setUserLocation({ lat: result.latitude, lng: result.longitude })
+          setLocationLabel(zipCode)
+          setLocationError(null)
+        } else {
+          setLocationError("Unable to find location for this ZIP code")
+        }
+      } catch {
+        setLocationError("Failed to geocode ZIP code")
+      } finally {
+        setIsGeocodingZip(false)
+      }
+    },
+    [lookupZip]
+  )
 
   const clearLocationFilter = useCallback(() => {
     setUserLocation(null)
@@ -258,7 +261,6 @@ function VehiclesPageContent() {
     setMinRating("")
     setSelectedDates({ start: "", end: "" })
     setDateRange(undefined)
-    setCurrentPage(1)
     setSelectedSafetyEquipment([])
     setSelectedExperienceLevel("all")
     setSelectedTireType("all")
@@ -496,23 +498,88 @@ function VehiclesPageContent() {
 
   // Data queries
   const tracksData = useQuery(api.tracks.getAll, {})
-  const vehiclesData = useQuery(
-    api.vehicles.searchWithAvailability,
-    tracksData
-      ? {
-          startDate: selectedDates.start || undefined,
-          endDate: selectedDates.end || undefined,
-          trackId:
-            selectedTrack !== "all"
-              ? (tracksData.find((t) => t.name === selectedTrack)?._id as Id<"tracks">)
-              : undefined,
-          limit: 200,
-          userLatitude: userLocation && maxDistance > 0 ? userLocation.lat : undefined,
-          userLongitude: userLocation && maxDistance > 0 ? userLocation.lng : undefined,
-          maxDistanceMiles: userLocation && maxDistance > 0 ? maxDistance : undefined,
-        }
-      : "skip"
-  )
+
+  // Translate the price range chip ("$100-$200", "$500+", or "any") into bounds
+  const priceBounds = useMemo<{ min?: number; max?: number }>(() => {
+    if (customPriceRange) {
+      return { min: customPriceRange[0], max: customPriceRange[1] }
+    }
+    if (selectedPriceRange === "any") {
+      return {}
+    }
+    if (selectedPriceRange.endsWith("+")) {
+      const min = Number.parseInt(selectedPriceRange.replace(/\D/g, ""), 10)
+      return Number.isFinite(min) ? { min } : {}
+    }
+    const [rawMin, rawMax] = selectedPriceRange
+      .split("-")
+      .map((p: string) => Number.parseInt(p.replace(/\D/g, ""), 10))
+    const bounds: { min?: number; max?: number } = {}
+    if (Number.isFinite(rawMin)) {
+      bounds.min = rawMin
+    }
+    if (Number.isFinite(rawMax)) {
+      bounds.max = rawMax
+    }
+    return bounds
+  }, [customPriceRange, selectedPriceRange])
+
+  const parsedInt = (s: string) => {
+    const n = Number.parseInt(s, 10)
+    return Number.isFinite(n) ? n : undefined
+  }
+
+  const searchArgs = useMemo(() => {
+    if (!tracksData) {
+      return "skip" as const
+    }
+    return {
+      startDate: selectedDates.start || undefined,
+      endDate: selectedDates.end || undefined,
+      trackId:
+        selectedTrack !== "all"
+          ? (tracksData.find((t: any) => t.name === selectedTrack)?._id as Id<"tracks">)
+          : undefined,
+      transmission: selectedTransmission !== "all" ? selectedTransmission : undefined,
+      drivetrain: selectedDriveType !== "all" ? selectedDriveType : undefined,
+      minYear: parsedInt(minYear),
+      maxYear: parsedInt(maxYear),
+      minHorsepower: parsedInt(minHorsepower),
+      maxHorsepower: parsedInt(maxHorsepower),
+      // Price is filtered client-side (see filteredVehicles) so the slider's domain
+      // stays stable — filtering it server-side collapses the min/max bounds.
+      experienceLevel: selectedExperienceLevel !== "all" ? selectedExperienceLevel : undefined,
+      tireType: selectedTireType !== "all" ? selectedTireType : undefined,
+      deliveryOnly: deliveryOnly || undefined,
+      userLatitude: userLocation && maxDistance > 0 ? userLocation.lat : undefined,
+      userLongitude: userLocation && maxDistance > 0 ? userLocation.lng : undefined,
+      maxDistanceMiles: userLocation && maxDistance > 0 ? maxDistance : undefined,
+    }
+  }, [
+    tracksData,
+    selectedDates.start,
+    selectedDates.end,
+    selectedTrack,
+    selectedTransmission,
+    selectedDriveType,
+    minYear,
+    maxYear,
+    minHorsepower,
+    maxHorsepower,
+    selectedExperienceLevel,
+    selectedTireType,
+    deliveryOnly,
+    userLocation,
+    maxDistance,
+  ])
+
+  // The backend returns the FULL matching set (indexed filters + availability +
+  // distance applied server-side). Text/location/rating/safety filtering, sorting,
+  // and "load more" pagination all happen on the client over this full set.
+  const vehiclesData = useQuery(api.vehicles.searchWithAvailability, searchArgs)
+
+  // How many of the filtered results to show ("load more" reveals more locally).
+  const [visibleCount, setVisibleCount] = useState(itemsPerPage)
 
   const vehicleStats = useQuery(
     api.reviews.getVehicleStatsBatch,
@@ -541,7 +608,7 @@ function VehiclesPageContent() {
 
       return {
         id: vehicle._id,
-        image: primaryImage?.cardUrl ?? "",
+        image: "",
         imageKey: primaryImage?.r2Key ?? undefined,
         name: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
         year: vehicle.year,
@@ -559,6 +626,7 @@ function VehiclesPageContent() {
         experienceLevel: vehicle.experienceLevel,
         tireType: vehicle.tireType,
         deliveryAvailable: vehicle.deliveryAvailable,
+        hostStripeReady: vehicle.hostStripeReady,
       }
     })
   }, [vehiclesData, vehicleStats])
@@ -573,14 +641,6 @@ function VehiclesPageContent() {
       location: track.location,
     }))
   }, [tracksData])
-
-  const makes = useMemo(() => Array.from(new Set(vehicles.map((v) => v.make))).sort(), [vehicles])
-
-  const models = useMemo(() => {
-    const filtered =
-      selectedMake !== "all" ? vehicles.filter((v) => v.make === selectedMake) : vehicles
-    return Array.from(new Set(filtered.map((v) => v.model))).sort()
-  }, [vehicles, selectedMake])
 
   // Search suggestions
   const searchSuggestions = useMemo(() => {
@@ -608,7 +668,8 @@ function VehiclesPageContent() {
     return Array.from(new Set(suggestions)).slice(0, 5)
   }, [debouncedSearchQuery, vehicles])
 
-  // Filter vehicles (bug fix: customPriceRange in deps)
+  // Server-side filters (make/model/transmission/drivetrain/year/hp/price/experience/tire/delivery/dates/distance)
+  // are applied in the Convex query. Only the filters below run on accumulated results.
   const filteredVehicles = useMemo(() => {
     let filtered = vehicles.filter((vehicle) => {
       if (debouncedSearchQuery) {
@@ -626,75 +687,16 @@ function VehiclesPageContent() {
           return false
         }
       }
-      if (selectedTrack !== "all" && vehicle.track !== selectedTrack) {
-        return false
-      }
-      if (selectedMake !== "all" && vehicle.make !== selectedMake) {
-        return false
-      }
-      if (selectedModel !== "all" && vehicle.model !== selectedModel) {
-        return false
-      }
-      if (
-        selectedDriveType !== "all" &&
-        vehicle.drivetrain &&
-        vehicle.drivetrain.toUpperCase() !== selectedDriveType.toUpperCase()
-      ) {
-        return false
-      }
       if (
         selectedLocation &&
         !vehicle.location.toLowerCase().includes(selectedLocation.toLowerCase())
       ) {
         return false
       }
-
-      // Price filter (bug fix: check customPriceRange first)
-      if (customPriceRange) {
-        const [minPrice, maxPrice] = customPriceRange
-        if (vehicle.pricePerDay < minPrice || vehicle.pricePerDay > maxPrice) {
-          return false
-        }
-      } else if (selectedPriceRange !== "any") {
-        if (selectedPriceRange.endsWith("+")) {
-          const minPrice = Number.parseInt(selectedPriceRange.replace(/\D/g, ""), 10)
-          if (vehicle.pricePerDay < minPrice) {
-            return false
-          }
-        } else {
-          const [min, max] = selectedPriceRange
-            .split("-")
-            .map((p: string) => Number.parseInt(p.replace(/\D/g, ""), 10))
-          if (vehicle.pricePerDay < min || vehicle.pricePerDay > max) {
-            return false
-          }
-        }
-      }
-
-      if (
-        minHorsepower &&
-        vehicle.horsepower &&
-        vehicle.horsepower < Number.parseInt(minHorsepower, 10)
-      ) {
+      if (priceBounds.min !== undefined && vehicle.pricePerDay < priceBounds.min) {
         return false
       }
-      if (
-        maxHorsepower &&
-        vehicle.horsepower &&
-        vehicle.horsepower > Number.parseInt(maxHorsepower, 10)
-      ) {
-        return false
-      }
-      if (
-        selectedTransmission !== "all" &&
-        vehicle.transmission?.toLowerCase() !== selectedTransmission.toLowerCase()
-      ) {
-        return false
-      }
-      if (minYear && vehicle.year < Number.parseInt(minYear, 10)) {
-        return false
-      }
-      if (maxYear && vehicle.year > Number.parseInt(maxYear, 10)) {
+      if (priceBounds.max !== undefined && vehicle.pricePerDay > priceBounds.max) {
         return false
       }
       if (minRating && minRating !== "any" && vehicle.rating < Number.parseFloat(minRating)) {
@@ -706,19 +708,6 @@ function VehiclesPageContent() {
           return false
         }
       }
-      if (
-        selectedExperienceLevel !== "all" &&
-        vehicle.experienceLevel !== selectedExperienceLevel
-      ) {
-        return false
-      }
-      if (selectedTireType !== "all" && vehicle.tireType !== selectedTireType) {
-        return false
-      }
-      if (deliveryOnly && !vehicle.deliveryAvailable) {
-        return false
-      }
-
       return true
     })
 
@@ -743,13 +732,34 @@ function VehiclesPageContent() {
   }, [
     vehicles,
     debouncedSearchQuery,
+    selectedLocation,
+    priceBounds,
+    minRating,
+    sortBy,
+    selectedSafetyEquipment,
+  ])
+
+  // Client-side pagination over the fully filtered + sorted set
+  const paginatedVehicles = useMemo(
+    () => filteredVehicles.slice(0, visibleCount),
+    [filteredVehicles, visibleCount]
+  )
+  const hasMore = visibleCount < filteredVehicles.length
+  const isLoadingMore = false
+
+  // Reset to the first page whenever the filtered set changes due to a filter or
+  // sort change (not when more data merely streams in from Convex).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter/sort inputs, not derived data
+  useEffect(() => {
+    setVisibleCount(itemsPerPage)
+  }, [
+    debouncedSearchQuery,
+    selectedLocation,
     selectedTrack,
     selectedMake,
     selectedModel,
     selectedDriveType,
-    selectedLocation,
-    selectedPriceRange,
-    customPriceRange,
+    priceBounds,
     minHorsepower,
     maxHorsepower,
     selectedTransmission,
@@ -757,19 +767,14 @@ function VehiclesPageContent() {
     maxYear,
     minRating,
     sortBy,
+    selectedDates,
+    userLocation,
+    maxDistance,
     selectedSafetyEquipment,
     selectedExperienceLevel,
     selectedTireType,
     deliveryOnly,
   ])
-
-  const paginatedVehicles = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredVehicles.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredVehicles, currentPage])
-
-  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage)
-  const hasMore = currentPage < totalPages
 
   // Reset model when make changes
   useEffect(() => {
@@ -798,11 +803,6 @@ function VehiclesPageContent() {
       }
     }
   }, [selectedDates.end, selectedDates.start]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [])
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -874,9 +874,7 @@ function VehiclesPageContent() {
   ])
 
   const loadMore = () => {
-    if (hasMore) {
-      setCurrentPage((prev) => prev + 1)
-    }
+    setVisibleCount((count) => count + itemsPerPage)
   }
 
   const clearSearchAndDates = useCallback(() => {
@@ -913,7 +911,12 @@ function VehiclesPageContent() {
         datePickerOpen={datePickerOpen}
         dateRange={dateRange}
         filters={filterState}
+        geocodeZipCode={geocodeZipCode}
+        getCurrentLocation={getCurrentLocation}
+        isGeocodingZip={isGeocodingZip}
+        isGettingLocation={isGettingLocation}
         isMobile={isMobile}
+        locationError={locationError}
         searchSuggestions={searchSuggestions}
         setDatePickerOpen={setDatePickerOpen}
         tracks={tracks}
@@ -932,21 +935,14 @@ function VehiclesPageContent() {
       )}
 
       <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        <div className="grid gap-6 xl:grid-cols-[320px_1fr] xl:gap-8">
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:gap-8">
           {/* Filters Sidebar - Desktop */}
-          <aside className="hidden xl:block">
-            <div className="sticky top-20">
+          <aside className="hidden lg:block">
+            <div className="sticky top-52">
               <FilterPanel
                 actions={filterActions}
                 activeFiltersCount={activeFiltersCount}
                 filters={filterState}
-                geocodeZipCode={geocodeZipCode}
-                getCurrentLocation={getCurrentLocation}
-                isGeocodingZip={isGeocodingZip}
-                isGettingLocation={isGettingLocation}
-                locationError={locationError}
-                makes={makes}
-                models={models}
                 tracks={tracks}
                 vehicles={vehicles}
               />
@@ -966,6 +962,7 @@ function VehiclesPageContent() {
               filterState={filterState}
               hasMore={hasMore}
               isLoading={vehiclesData === undefined || tracksData === undefined}
+              isLoadingMore={isLoadingMore}
               itemsPerPage={itemsPerPage}
               loadMore={loadMore}
               mobileFilters={
@@ -974,13 +971,6 @@ function VehiclesPageContent() {
                   activeFiltersCount={activeFiltersCount}
                   filteredCount={filteredVehicles.length}
                   filters={filterState}
-                  geocodeZipCode={geocodeZipCode}
-                  getCurrentLocation={getCurrentLocation}
-                  isGeocodingZip={isGeocodingZip}
-                  isGettingLocation={isGettingLocation}
-                  locationError={locationError}
-                  makes={makes}
-                  models={models}
                   tracks={tracks}
                   vehicles={vehicles}
                 />

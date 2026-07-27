@@ -29,7 +29,7 @@ function ChatPageContent() {
   const [_hoveredMessage, _setHoveredMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messageInputRef = useRef<HTMLInputElement>(null)
+  const messageInputRef = useRef<HTMLTextAreaElement>(null)
   // Track which conversation has been marked as read to prevent duplicate calls
   const markedAsReadRef = useRef<string | null>(null)
   // Track previous conversationId to detect actual changes
@@ -339,6 +339,20 @@ function ChatPageContent() {
     )
   }
 
+  // Booking-context for the chat header
+  const activeVehicle = pendingConversation ? pendingVehicle : vehicle
+  const vehicleImageKey =
+    activeVehicle?.images?.find((img: { isPrimary?: boolean }) => img.isPrimary)?.r2Key ??
+    activeVehicle?.images?.[0]?.r2Key ??
+    null
+  const vehicleHref = activeVehicle?._id ? `/vehicles/${activeVehicle._id}` : null
+  const isOwnerInConversation = !!(conversation && user?.id === conversation.ownerId)
+  const bookingHref = conversation?.reservation
+    ? isOwnerInConversation
+      ? "/host/reservations"
+      : "/trips"
+    : null
+
   const handleSendMessage = async () => {
     const content = newMessage.trim()
     if (!content) return
@@ -608,11 +622,16 @@ function ChatPageContent() {
           {/* Header */}
           <CardHeader className="border-b py-3">
             <ChatHeader
+              bookingHref={bookingHref}
+              coachProfile={pendingConversation ? null : conversation?.coachProfile}
               isPending={!!pendingConversation}
               onArchive={handleArchiveConversation}
               onDelete={handleDeleteConversation}
               participant={pendingConversation ? recipientUser : otherUser}
+              reservation={pendingConversation ? null : conversation?.reservation}
               vehicle={pendingConversation ? pendingVehicle : vehicle}
+              vehicleHref={vehicleHref}
+              vehicleImageKey={vehicleImageKey}
             />
           </CardHeader>
 
@@ -735,6 +754,7 @@ function ChatPageContent() {
                   }
                 : undefined
             }
+            userId={user.id}
             value={newMessage}
             warnThreshold={MESSAGE_WARN_THRESHOLD}
           />

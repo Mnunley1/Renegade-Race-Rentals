@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
+import { r2Url } from "@/lib/r2-url"
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -155,12 +156,28 @@ export default function DamageInvoiceDetailPage() {
             </div>
             <div>
               <Label>Created</Label>
-              <p className="mt-1">{new Date(invoice.createdAt).toLocaleString()}</p>
+              <p className="mt-1">
+                {new Date(invoice.createdAt).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
             {invoice.paidAt && (
               <div>
                 <Label>Paid At</Label>
-                <p className="mt-1">{new Date(invoice.paidAt).toLocaleString()}</p>
+                <p className="mt-1">
+                  {new Date(invoice.paidAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
             )}
             {invoice.adminNotes && (
@@ -223,7 +240,7 @@ export default function DamageInvoiceDetailPage() {
                     className="object-cover"
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
-                    src={`https://ik.imagekit.io/renegaderace/${photo}?tr=w-400,h-300,q-80,f-auto`}
+                    src={r2Url(photo)}
                   />
                 </div>
               ))}

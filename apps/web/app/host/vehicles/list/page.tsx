@@ -1,7 +1,6 @@
 "use client"
 
 import { useUser } from "@clerk/nextjs"
-import { Image, ImageKitProvider } from "@imagekit/next"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent } from "@workspace/ui/components/card"
@@ -18,8 +17,10 @@ import {
   Plus,
   XCircle,
 } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { api } from "@/lib/convex"
+import { r2Url } from "@/lib/r2-url"
 
 export default function HostVehiclesListPage() {
   const { user } = useUser()
@@ -85,22 +86,22 @@ export default function HostVehiclesListPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <Link href="/host/dashboard">
-          <Button className="mb-4" variant="ghost">
+          <Button className="mb-4 -ml-2 text-muted-foreground" size="sm" variant="ghost">
             <ArrowLeft className="mr-2 size-4" />
-            Back to Dashboard
+            Back to dashboard
           </Button>
         </Link>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="font-bold text-3xl">Your Vehicles</h1>
-            <p className="mt-2 text-muted-foreground">
+            <h1 className="font-bold text-3xl tracking-tight">Your vehicles</h1>
+            <p className="mt-1.5 text-muted-foreground">
               Manage all your listed vehicles in one place
             </p>
           </div>
           <Link href="/host/vehicles/new">
-            <Button size="lg">
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 size-4" />
               List New Vehicle
             </Button>
@@ -125,7 +126,7 @@ export default function HostVehiclesListPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {vehicles.map((vehicle: any) => {
             // Get the primary image r2Key for ImageKit
             const primaryImageKey =
@@ -136,79 +137,66 @@ export default function HostVehiclesListPage() {
             const hasValidImage = primaryImageKey && primaryImageKey.trim() !== ""
 
             return (
-              <Card className="overflow-hidden" key={vehicle._id}>
-                <div className="flex flex-col md:flex-row">
-                  {/* Vehicle Image */}
-                  <div className="relative flex h-48 w-full shrink-0 items-center justify-center overflow-hidden bg-muted md:h-auto md:w-64">
-                    {hasValidImage ? (
-                      <ImageKitProvider
-                        urlEndpoint={
-                          process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT ||
-                          "https://ik.imagekit.io/renegaderace"
-                        }
-                      >
+              <Card key={vehicle._id}>
+                <CardContent className="p-4">
+                  <div className="flex gap-4">
+                    {/* Vehicle Image */}
+                    <div className="relative flex h-32 w-48 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                      {hasValidImage ? (
                         <Image
                           alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                          className="size-full object-cover"
+                          className="object-cover"
                           fill
-                          src={`/${primaryImageKey}`}
-                          transformation={[{ width: 400, height: 300, quality: 80 }]}
+                          quality={80}
+                          sizes="192px"
+                          src={r2Url(primaryImageKey)}
                         />
-                      </ImageKitProvider>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <Car className="size-12 text-muted-foreground/40" />
-                        <p className="text-muted-foreground text-xs">No image</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Vehicle Details */}
-                  <div className="flex flex-1 flex-col p-6">
-                    <div className="mb-4 flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="mb-2 flex items-center gap-3">
-                          <h2 className="font-bold text-xl">
-                            {vehicle.year} {vehicle.make} {vehicle.model}
-                          </h2>
-                          {getStatusBadge(vehicle)}
-                        </div>
-                        <p className="mb-2 line-clamp-2 text-muted-foreground">
-                          {vehicle.description}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
-                          <span className="flex items-center gap-1.5">
-                            <Calendar className="size-4" />
-                            Listed {formatDate(vehicle.createdAt)}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Car className="size-4" />
-                            {vehicle.track?.name || "Track TBD"}
-                          </span>
-                          <span className="font-semibold text-primary">
-                            ${vehicle.dailyRate}/day
-                          </span>
-                        </div>
-                      </div>
+                      ) : (
+                        <Car className="size-10 text-muted-foreground/40" />
+                      )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      <Link href={`/vehicles/${vehicle._id}`}>
-                        <Button size="sm" variant="outline">
-                          <Eye className="mr-2 size-4" />
-                          View Listing
-                        </Button>
-                      </Link>
-                      <Link href={`/host/vehicles/${vehicle._id}/edit`}>
-                        <Button size="sm" variant="outline">
-                          <Edit className="mr-2 size-4" />
-                          Edit
-                        </Button>
-                      </Link>
+                    {/* Vehicle Details */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="truncate font-semibold">
+                          {vehicle.year} {vehicle.make} {vehicle.model}
+                        </h2>
+                        {getStatusBadge(vehicle)}
+                      </div>
+                      <p className="mt-1 line-clamp-1 text-muted-foreground text-sm">
+                        {vehicle.description}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="size-3.5" />
+                          Listed {formatDate(vehicle.createdAt)}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Car className="size-3.5" />
+                          {vehicle.track?.name || "Track TBD"}
+                        </span>
+                        <span className="font-semibold text-primary">${vehicle.dailyRate}/day</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <Link href={`/vehicles/${vehicle._id}`}>
+                      <Button size="sm" variant="ghost">
+                        <Eye className="mr-2 size-4" />
+                        View listing
+                      </Button>
+                    </Link>
+                    <Link href={`/host/vehicles/${vehicle._id}/edit`}>
+                      <Button size="sm" variant="outline">
+                        <Edit className="mr-2 size-4" />
+                        Edit
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
               </Card>
             )
           })}

@@ -304,11 +304,13 @@ export default defineSchema({
     renterId: v.string(),
     ownerId: v.string(),
     conversationType: v.optional(
-      v.union(v.literal("rental"), v.literal("team"), v.literal("driver"))
+      v.union(v.literal("rental"), v.literal("team"), v.literal("driver"), v.literal("coaching"))
     ),
     teamId: v.optional(v.id("teams")),
     driverProfileId: v.optional(v.id("driverProfiles")),
+    coachProfileId: v.optional(v.id("coachProfiles")),
     reservationId: v.optional(v.id("reservations")),
+    coachingBookingId: v.optional(v.id("coachingBookings")),
     lastMessageAt: v.number(),
     lastMessageText: v.optional(v.string()),
     lastMessageSenderId: v.optional(v.string()),
@@ -370,6 +372,7 @@ export default defineSchema({
     principal: v.optional(v.string()),
     /** Sponsor brand list (Phase 1b). */
     sponsors: v.optional(v.array(v.string())),
+    logoR2Key: v.optional(v.string()),
     location: v.string(),
     racingType: v.optional(
       v.union(v.literal("real-world"), v.literal("sim-racing"), v.literal("both"))
@@ -810,6 +813,9 @@ export default defineSchema({
       v.literal("dispute"),
       v.literal("damage_invoice"),
       v.literal("invoice")
+      v.literal("coach_profile"),
+      v.literal("coaching_booking"),
+      v.literal("coaching_review")
     ),
     entityId: v.string(), // ID of the entity being changed
     action: v.string(), // e.g., "status_change", "create", "update", "delete"
@@ -857,6 +863,11 @@ export default defineSchema({
       v.literal("profile_view"),
       v.literal("damage_invoice"),
       v.literal("invoice")
+      v.literal("coaching_request_pending"),
+      v.literal("coaching_approved"),
+      v.literal("coaching_declined"),
+      v.literal("coaching_cancelled"),
+      v.literal("coaching_completed")
     ),
     title: v.string(),
     message: v.string(),
@@ -1573,6 +1584,157 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_brand", ["brandName"])
     .index("by_verified", ["isVerified"]),
+  coachProfiles: defineTable({
+    userId: v.string(),
+    headline: v.optional(v.string()),
+    bio: v.string(),
+    avatarUrl: v.optional(v.string()),
+    avatarR2Key: v.optional(v.string()),
+    yearsExperience: v.optional(v.number()),
+    specialties: v.array(v.string()), // e.g., ['HPDE', 'GT3', 'Karting', 'Time Attack']
+    certifications: v.optional(v.array(v.string())), // e.g., ['SCCA Licensed Instructor', 'NASA HPDE-4']
+    tracksCoachedAt: v.optional(v.array(v.string())), // free-text track names for v1
+    racingType: v.optional(
+      v.union(v.literal("real-world"), v.literal("sim-racing"), v.literal("both"))
+    ),
+    // Pricing in cents. At least one must be set, validated in mutations.
+    hourlyRate: v.optional(v.number()),
+    halfDayRate: v.optional(v.number()),
+    fullDayRate: v.optional(v.number()),
+    location: v.string(),
+    contactInfo: v.optional(
+      v.object({
+        phone: v.optional(v.string()),
+        email: v.optional(v.string()),
+      })
+    ),
+    socialLinks: v.optional(
+      v.object({
+        instagram: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+        linkedin: v.optional(v.string()),
+        website: v.optional(v.string()),
+      })
+    ),
+    isActive: v.boolean(),
+    viewCount: v.optional(v.number()),
+    // Aggregate rating derived from public coachingReviews (recalculated on submit)
+    rating: v.optional(v.number()),
+    reviewCount: v.optional(v.number()),
+    // Soft vetting: coaches publish immediately as "pending"; admins verify/reject.
+    // The public directory still lists active profiles; "verified" drives a badge.
+    verificationStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
+    ),
+    verifiedAt: v.optional(v.number()),
+    verifiedBy: v.optional(v.string()),
+    moderationNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_active", ["isActive"])
+    .index("by_location", ["location"])
+    .index("by_racing_type", ["racingType"])
+    .index("by_verification_status", ["verificationStatus"]),
+
+  coachingReviews: defineTable({
+    coachingBookingId: v.id("coachingBookings"),
+    coachProfileId: v.id("coachProfiles"),
+    coachUserId: v.string(),
+    reviewerId: v.string(), // the renter who took the session
+    rating: v.number(), // 1-5 overall
+    // Optional per-category scores (1-5)
+    communication: v.optional(v.number()),
+    knowledge: v.optional(v.number()),
+    value: v.optional(v.number()),
+    title: v.string(),
+    review: v.string(),
+    photos: v.optional(v.array(v.string())),
+    response: v.optional(
+      v.object({
+        text: v.string(),
+        respondedAt: v.number(),
+      })
+    ),
+    isPublic: v.boolean(),
+    isModerated: v.boolean(),
+    moderatedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_booking", ["coachingBookingId"])
+    .index("by_coach_profile", ["coachProfileId"])
+    .index("by_reviewer", ["reviewerId"])
+    .index("by_public", ["isPublic"])
+    .index("by_moderated", ["isModerated"]),
+
+  coachAvailability: defineTable({
+    coachProfileId: v.id("coachProfiles"),
+    date: v.string(), // YYYY-MM-DD
+    isAvailable: v.boolean(),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_coach_date", ["coachProfileId", "date"])
+    .index("by_coach_available", ["coachProfileId", "isAvailable"]),
+
+  coachingBookings: defineTable({
+    coachProfileId: v.id("coachProfiles"),
+    coachUserId: v.string(),
+    renterId: v.string(),
+    startDate: v.string(), // YYYY-MM-DD
+    endDate: v.string(), // YYYY-MM-DD (same as startDate for single-day hourly bookings)
+    startTime: v.optional(v.string()), // HH:MM 24-hour, required for hourly
+    endTime: v.optional(v.string()),
+    sessionType: v.union(v.literal("hourly"), v.literal("half_day"), v.literal("full_day")),
+    hours: v.optional(v.number()), // populated when sessionType === "hourly"
+    totalDays: v.number(),
+    rate: v.number(), // unit rate in cents at time of booking (hourlyRate/halfDayRate/fullDayRate)
+    totalAmount: v.number(), // cents
+    // Optional free-text event tag (e.g. "COTA SCCA weekend, March 14")
+    eventName: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("confirmed"),
+      v.literal("cancelled"),
+      v.literal("completed"),
+      v.literal("declined"),
+      v.literal("expired")
+    ),
+    approvedAt: v.optional(v.number()),
+    renterMessage: v.optional(v.string()),
+    coachMessage: v.optional(v.string()),
+    cancellationReason: v.optional(v.string()),
+    paymentId: v.optional(v.id("payments")),
+    paymentStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("paid"), v.literal("failed"), v.literal("refunded"))
+    ),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    confirmedAt: v.optional(v.number()),
+    // Lightweight dispute flag: either party can "report a problem" on a
+    // confirmed/completed booking, surfacing it to admins for refund/dismissal.
+    disputeStatus: v.optional(
+      v.union(v.literal("open"), v.literal("resolved"), v.literal("dismissed"))
+    ),
+    issueReportedAt: v.optional(v.number()),
+    issueReportedBy: v.optional(v.string()),
+    issueReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_coach_profile", ["coachProfileId"])
+    .index("by_coach_user", ["coachUserId"])
+    .index("by_renter", ["renterId"])
+    .index("by_status", ["status"])
+    .index("by_coach_user_status", ["coachUserId", "status"])
+    .index("by_renter_status", ["renterId", "status"])
+    .index("by_dates", ["startDate", "endDate"])
+    .index("by_dispute_status", ["disputeStatus"])
+    .index("by_stripe_checkout_session", ["stripeCheckoutSessionId"])
+    .index("by_stripe_payment_intent", ["stripePaymentIntentId"]),
 
   // Webhook idempotency tracking
   webhookEvents: defineTable({

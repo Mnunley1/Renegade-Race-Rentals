@@ -196,7 +196,14 @@ export default function SettingsPage() {
                   </p>
                 )}
                 <p className="mt-2 text-muted-foreground text-xs">
-                  Last updated: {new Date(settings.updatedAt).toLocaleString()}
+                  Last updated:{" "}
+                  {new Date(settings.updatedAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>

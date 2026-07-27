@@ -4,6 +4,7 @@ import {
   calculatePlatformFeeAmount,
   datesOverlap,
   calculateRefundAmount,
+  isCoachingCancellationRefundable,
 } from "./pricing"
 
 // ============================================================================
@@ -219,5 +220,69 @@ describe("calculateRefundAmount", () => {
   it("handles small amounts", () => {
     // 50% of 1 = 0.5, rounds to 1
     expect(calculateRefundAmount(1, 50)).toBe(1)
+  })
+})
+
+// ============================================================================
+// isCoachingCancellationRefundable
+// ============================================================================
+
+describe("isCoachingCancellationRefundable", () => {
+  const now = Date.parse("2030-06-01T00:00:00Z")
+
+  it("always refunds when the coach cancels, regardless of timing", () => {
+    expect(
+      isCoachingCancellationRefundable({
+        cancelledByCoach: true,
+        startDate: "2030-06-01",
+        startTime: "09:00",
+        now,
+      })
+    ).toBe(true)
+  })
+
+  it("refunds a renter cancelling with more than 24h notice", () => {
+    expect(
+      isCoachingCancellationRefundable({
+        cancelledByCoach: false,
+        startDate: "2030-06-10",
+        now,
+      })
+    ).toBe(true)
+  })
+
+  it("does not refund a renter cancelling the same day", () => {
+    expect(
+      isCoachingCancellationRefundable({
+        cancelledByCoach: false,
+        startDate: "2030-06-01",
+        startTime: "09:00",
+        now,
+      })
+    ).toBe(false)
+  })
+
+  it("treats exactly 24h before as still refundable", () => {
+    // now is 2030-06-01T00:00Z; a session at 2030-06-02T00:00Z is exactly 24h out.
+    expect(
+      isCoachingCancellationRefundable({
+        cancelledByCoach: false,
+        startDate: "2030-06-02",
+        startTime: "00:00",
+        now,
+      })
+    ).toBe(true)
+  })
+
+  it("does not refund just inside the 24h window", () => {
+    // Session at 2030-06-01T23:00Z is 23h out from now — inside the window.
+    expect(
+      isCoachingCancellationRefundable({
+        cancelledByCoach: false,
+        startDate: "2030-06-01",
+        startTime: "23:00",
+        now,
+      })
+    ).toBe(false)
   })
 })

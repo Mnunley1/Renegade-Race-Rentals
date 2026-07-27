@@ -47,6 +47,7 @@ import { VehicleGallery } from "@/components/vehicle-gallery"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
+import { r2Url } from "@/lib/r2-url"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -60,9 +61,19 @@ type VehicleOwner = {
   _id: string
   name?: string
   profileImage?: string
+  profileImageR2Key?: string
   memberSince?: string
   totalRentals?: number
   externalId?: string
+}
+
+// Format a stored member-since value (ISO string) as "Month Year",
+// matching the renter profile page. Returns "" for missing/invalid values.
+function formatMemberSince(value?: string): string {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
 }
 
 type VehicleTrack = {
@@ -106,6 +117,7 @@ type VehicleData = {
   images?: VehicleImage[]
   owner?: VehicleOwner
   track?: VehicleTrack
+  hostStripeReady?: boolean
 }
 
 type ReviewData = {
@@ -417,8 +429,10 @@ function VehicleDetailsPageContent() {
 
   const host = {
     name: vehicle.owner?.name || "Unknown",
-    avatar: vehicle.owner?.profileImage || "",
-    memberSince: vehicle.owner?.memberSince || "",
+    avatar: vehicle.owner?.profileImageR2Key
+      ? r2Url(vehicle.owner.profileImageR2Key)
+      : vehicle.owner?.profileImage || "",
+    memberSince: formatMemberSince(vehicle.owner?.memberSince),
     tripsCompleted: vehicle.owner?.totalRentals || 0,
   }
 
@@ -1041,6 +1055,7 @@ function VehicleDetailsPageContent() {
 
                   <Button
                     className="mb-3 w-full text-base"
+                    disabled={vehicle.hostStripeReady === false}
                     onClick={() => {
                       const checkoutUrl =
                         startDate && endDate
@@ -1050,10 +1065,12 @@ function VehicleDetailsPageContent() {
                     }}
                     size="lg"
                   >
-                    Reserve Now
+                    {vehicle.hostStripeReady === false ? "Booking Unavailable" : "Reserve Now"}
                   </Button>
                   <p className="text-center text-muted-foreground text-xs">
-                    You won&apos;t be charged until checkout
+                    {vehicle.hostStripeReady === false
+                      ? "Vehicle coming soon"
+                      : "You won't be charged until checkout"}
                   </p>
                 </CardContent>
               </Card>
@@ -1088,12 +1105,16 @@ function VehicleDetailsPageContent() {
                       <Separator className="my-4" />
                       <Button
                         className="w-full"
-                        disabled={isCreatingConversation}
+                        disabled={isCreatingConversation || vehicle.hostStripeReady === false}
                         onClick={handleMessageHost}
                         variant="outline"
                       >
                         <MessageSquare className="mr-2 size-4" />
-                        {isCreatingConversation ? "Loading..." : "Message Host"}
+                        {isCreatingConversation
+                          ? "Loading..."
+                          : vehicle.hostStripeReady === false
+                            ? "Messaging Unavailable"
+                            : "Message Host"}
                       </Button>
                     </>
                   )}
@@ -1120,6 +1141,7 @@ function VehicleDetailsPageContent() {
               <span className="text-muted-foreground text-sm"> /day</span>
             </div>
             <Button
+              disabled={vehicle.hostStripeReady === false}
               onClick={() => {
                 const checkoutUrl =
                   startDate && endDate
@@ -1129,7 +1151,7 @@ function VehicleDetailsPageContent() {
               }}
               size="lg"
             >
-              Reserve Now
+              {vehicle.hostStripeReady === false ? "Booking Unavailable" : "Reserve Now"}
             </Button>
           </div>
         </div>
@@ -1182,7 +1204,7 @@ function VehicleDetailsPageContent() {
 
                 <div className="mt-6 text-center">
                   <p className="text-muted-foreground text-sm">
-                    Join thousands of racing enthusiasts
+                    Join a community of racing enthusiasts
                   </p>
                 </div>
               </CardContent>

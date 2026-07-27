@@ -78,7 +78,12 @@ export default function DisputesPage() {
     {
       key: "date",
       header: "Date",
-      cell: (row) => new Date(row.createdAt).toLocaleDateString(),
+      cell: (row) =>
+        new Date(row.createdAt).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
       sortable: true,
       sortValue: (row) => new Date(row.createdAt).getTime(),
     },
@@ -153,7 +158,12 @@ export default function DisputesPage() {
                       {
                         key: "date",
                         header: "Date",
-                        value: (r) => new Date(r.createdAt).toLocaleDateString(),
+                        value: (r) =>
+                          new Date(r.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          }),
                       },
                     ],
                     "disputes"

@@ -37,7 +37,7 @@ export default function HelpPage() {
         {
           question: "How do I book a vehicle?",
           answer:
-            "Browse available vehicles, select your dates, and click 'Book Now'. You'll need to provide payment information and accept our rental terms.",
+            "Browse available vehicles, select your dates, and click 'Submit Request' to send a booking request to the host. No payment is required up front — once the host approves, you'll have 48 hours to complete payment and confirm your rental.",
         },
         {
           question: "What payment methods do you accept?",
@@ -107,7 +107,7 @@ export default function HelpPage() {
         {
           question: "How much can I earn?",
           answer:
-            "Earnings vary based on your vehicle, location, and demand. Many hosts earn $500-$2000 per weekend rental.",
+            "Earnings vary based on your vehicle, location, and demand. You set your own daily rate, and we'll show you what comparable vehicles are renting for so you can price competitively.",
         },
       ],
     },

@@ -64,7 +64,7 @@ export function DriverEndorsements({ driverProfileId, isOwner }: DriverEndorseme
 
   const hasEndorsed = useMemo(() => {
     if (!(endorsements && user)) return false
-    return endorsements.some((e) => e.endorserId === user.id)
+    return endorsements.some((e: any) => e.endorserId === user.id)
   }, [endorsements, user])
 
   const handleEndorse = async () => {
@@ -247,14 +247,14 @@ export function DriverEndorsements({ driverProfileId, isOwner }: DriverEndorseme
           </>
         )}
 
-        {endorsements.filter((e) => e.message).length > 0 && (
+        {endorsements.filter((e: any) => e.message).length > 0 && (
           <>
             <Separator />
             <div className="space-y-3">
               {endorsements
-                .filter((e) => e.message)
+                .filter((e: any) => e.message)
                 .slice(0, 5)
-                .map((endorsement) => (
+                .map((endorsement: any) => (
                   <div className="rounded-lg border p-3" key={endorsement._id}>
                     <div className="mb-1 flex items-center justify-between">
                       <span className="font-medium text-sm">

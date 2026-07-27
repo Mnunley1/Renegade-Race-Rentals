@@ -21,7 +21,6 @@ import { useMutation, useQuery } from "convex/react"
 import {
   Calendar,
   Camera,
-  Car,
   CheckCircle2,
   Heart,
   Loader2,
@@ -30,7 +29,6 @@ import {
   MessageSquare,
   Pencil,
   Phone,
-  Settings,
   Shield,
   Sparkles,
   Star,
@@ -38,12 +36,16 @@ import {
   User,
   X,
 } from "lucide-react"
-import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
-import { imagePresets } from "@/lib/imagekit"
+import {
+  ALLOWED_IMAGE_FORMATS_LABEL,
+  IMAGE_ACCEPT_ATTR,
+  isAllowedImageFile,
+} from "@/lib/image-validation"
+import { r2Url } from "@/lib/r2-url"
 
 const DEFAULT_MEMBER_YEAR = 2024
 const MAX_IMAGE_SIZE_MB = 5
@@ -60,7 +62,7 @@ function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
           <div className="relative" key={star} style={{ width: size, height: size }}>
             <Star className="absolute text-muted-foreground/25" size={size} />
             <div className="absolute overflow-hidden" style={{ width: `${fill * 100}%` }}>
-              <Star className="fill-yellow-500 text-yellow-500" size={size} />
+              <Star className="fill-amber-400 text-amber-400" size={size} />
             </div>
           </div>
         )
@@ -273,8 +275,8 @@ export default function ProfilePage() {
       return
     }
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file")
+    if (!isAllowedImageFile(file)) {
+      toast.error(`Please select ${ALLOWED_IMAGE_FORMATS_LABEL}`)
       return
     }
 
@@ -340,10 +342,9 @@ export default function ProfilePage() {
     }
   }
 
-  // Compute profile image URL with ImageKit sizing
   const profileImageUrl = useMemo(() => {
     if (convexUser?.profileImageR2Key) {
-      return imagePresets.avatar(convexUser.profileImageR2Key)
+      return r2Url(convexUser.profileImageR2Key)
     }
     if (convexUser?.profileImage) {
       return convexUser.profileImage
@@ -376,20 +377,8 @@ export default function ProfilePage() {
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <div className="space-y-6">
         {/* Hero Section */}
-        <Card className="relative overflow-hidden border-0 shadow-lg">
-          {/* Background pattern + gradient */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
-              backgroundSize: "24px 24px",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent" />
-          <div className="absolute -top-24 -right-24 size-64 rounded-full bg-primary/5 blur-3xl" />
-
-          <CardContent className="relative p-8">
+        <Card className="overflow-hidden border bg-card">
+          <CardContent className="p-8">
             <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="relative">
@@ -414,7 +403,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 <input
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT_ATTR}
                   className="hidden"
                   onChange={handleProfilePictureChange}
                   ref={fileInputRef}
@@ -450,26 +439,52 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                {/* Verification badges */}
+                {/* Verification & achievement badges */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge className="gap-1.5" variant={isEmailVerified ? "default" : "outline"}>
-                    <Mail className="size-3.5" />
-                    {isEmailVerified ? "Email Verified" : "Email Unverified"}
-                  </Badge>
-                  <Badge className="gap-1.5" variant={isPhoneVerified ? "default" : "outline"}>
-                    <Phone className="size-3.5" />
-                    {isPhoneVerified ? "Phone Verified" : "Phone Unverified"}
-                  </Badge>
+                  {isEmailVerified ? (
+                    <Badge
+                      className="gap-1.5 border-transparent bg-green-500/10 text-green-700 dark:text-green-400"
+                      variant="secondary"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Email verified
+                    </Badge>
+                  ) : (
+                    <Badge className="gap-1.5 text-muted-foreground" variant="outline">
+                      <Mail className="size-3.5" />
+                      Email unverified
+                    </Badge>
+                  )}
+                  {isPhoneVerified ? (
+                    <Badge
+                      className="gap-1.5 border-transparent bg-green-500/10 text-green-700 dark:text-green-400"
+                      variant="secondary"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Phone verified
+                    </Badge>
+                  ) : (
+                    <Badge className="gap-1.5 text-muted-foreground" variant="outline">
+                      <Phone className="size-3.5" />
+                      Phone unverified
+                    </Badge>
+                  )}
                   {stats.tripsCount >= 10 && (
-                    <Badge className="gap-1.5 bg-yellow-500/10 text-yellow-600" variant="outline">
-                      <Trophy className="size-3.5" />
-                      Experienced Driver
+                    <Badge
+                      className="gap-1.5 border-transparent bg-muted text-muted-foreground"
+                      variant="secondary"
+                    >
+                      <Trophy className="size-3.5 text-primary" />
+                      Experienced driver
                     </Badge>
                   )}
                   {stats.averageRating >= 4.5 && stats.totalReviews >= 3 && (
-                    <Badge className="gap-1.5 bg-amber-500/10 text-amber-600" variant="outline">
-                      <Star className="size-3.5 fill-amber-500" />
-                      Top Rated
+                    <Badge
+                      className="gap-1.5 border-transparent bg-muted text-muted-foreground"
+                      variant="secondary"
+                    >
+                      <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                      Top rated
                     </Badge>
                   )}
                 </div>
@@ -541,11 +556,11 @@ export default function ProfilePage() {
 
         {/* Stats Grid */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="group transition-shadow hover:shadow-md">
+          <Card className="transition-colors hover:border-foreground/15">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-blue-500/10">
-                  <Calendar className="size-6 text-blue-600" />
+                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Calendar className="size-6 text-primary" />
                 </div>
                 <div>
                   <p className="font-bold text-2xl tabular-nums">{stats.tripsCount}</p>
@@ -555,11 +570,11 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="group transition-shadow hover:shadow-md">
+          <Card className="transition-colors hover:border-foreground/15">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-yellow-500/10">
-                  <Star className="size-6 text-yellow-600" />
+                <div className="flex size-12 items-center justify-center rounded-xl bg-amber-400/10">
+                  <Star className="size-6 fill-amber-400 text-amber-400" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -580,11 +595,11 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="group transition-shadow hover:shadow-md">
+          <Card className="transition-colors hover:border-foreground/15">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-rose-500/10">
-                  <Heart className="size-6 text-rose-600" />
+                <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Heart className="size-6 text-primary" />
                 </div>
                 <div>
                   <p className="font-bold text-2xl tabular-nums">{stats.favoritesCount}</p>
@@ -800,65 +815,6 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Quick Links */}
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <Link href="/settings">
-            <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Settings className="size-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Settings</p>
-                  <p className="text-muted-foreground text-xs">Account preferences</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/vehicles">
-            <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Car className="size-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">My Vehicles</p>
-                  <p className="text-muted-foreground text-xs">Manage listings</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/trips">
-            <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Calendar className="size-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Trips</p>
-                  <p className="text-muted-foreground text-xs">Booking history</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/favorites">
-            <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Heart className="size-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Favorites</p>
-                  <p className="text-muted-foreground text-xs">Saved vehicles</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
       </div>
     </div>
   )

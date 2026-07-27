@@ -1,11 +1,5 @@
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Card, CardContent } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { ArrowLeft, Mail } from "lucide-react"
@@ -21,23 +15,17 @@ export default function ResetPasswordPage() {
         </p>
       </div>
 
-      <Card className="border-2 bg-card shadow-xl">
-        <CardHeader className="pb-4 sm:pb-6">
-          <div className="mb-4">
+      <Card className="border bg-card shadow-sm">
+        <CardContent className="p-6">
+          <div className="mb-5">
             <Link
-              className="inline-flex items-center text-muted-foreground text-xs transition-colors hover:text-primary sm:text-sm"
+              className="inline-flex items-center text-muted-foreground text-sm transition-colors hover:text-primary"
               href="/sign-in"
             >
               <ArrowLeft className="mr-2 size-4" />
               Back to sign in
             </Link>
           </div>
-          <CardTitle className="text-lg sm:text-xl">Forgot your password?</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            No worries! Enter your email below and we'll send you instructions to reset it.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4 sm:pb-6">
           <form className="space-y-4 sm:space-y-6">
             <div className="space-y-1.5 sm:space-y-2">
               <Label className="text-sm" htmlFor="email">
@@ -76,24 +64,9 @@ export default function ResetPasswordPage() {
         </CardContent>
       </Card>
 
-      {/* Additional help section */}
-      <Card className="border bg-muted/30 dark:bg-muted/50">
-        <CardContent className="pt-6">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Mail className="size-3 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">Check your spam folder</p>
-                <p className="text-muted-foreground text-sm">
-                  The email might take a few minutes to arrive
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <p className="px-2 text-center text-muted-foreground text-xs">
+        The reset email can take a few minutes to arrive — remember to check your spam folder.
+      </p>
     </div>
   )
 }

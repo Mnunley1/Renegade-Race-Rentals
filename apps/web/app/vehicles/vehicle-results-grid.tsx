@@ -12,7 +12,7 @@ import {
 } from "@workspace/ui/components/select"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
-import { ChevronRight, Grid3x3, List, Search, X } from "lucide-react"
+import { ChevronRight, Grid3x3, List, Loader2, Search, X } from "lucide-react"
 import { Suspense } from "react"
 import { VehicleCard } from "@/components/vehicle-card"
 import type { FilterActions, FilterState, SortOption, VehicleItem, ViewMode } from "./types"
@@ -28,6 +28,7 @@ type VehicleResultsGridProps = {
   setSortBy: (sort: string) => void
   hasMore: boolean
   loadMore: () => void
+  isLoadingMore?: boolean
   clearFilters: () => void
   clearSearchAndDates: () => void
   itemsPerPage: number
@@ -50,6 +51,7 @@ export function VehicleResultsGrid({
   setSortBy,
   hasMore,
   loadMore,
+  isLoadingMore = false,
   clearFilters,
   clearSearchAndDates,
   itemsPerPage,
@@ -72,7 +74,7 @@ export function VehicleResultsGrid({
         </p>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {mobileFilters && <div className="xl:hidden">{mobileFilters}</div>}
+          {mobileFilters && <div className="lg:hidden">{mobileFilters}</div>}
           <Select onValueChange={setSortBy} value={sortBy}>
             <SelectTrigger
               aria-label="Sort vehicles"
@@ -231,7 +233,9 @@ export function VehicleResultsGrid({
             <div
               className={cn(
                 "grid gap-4 sm:gap-6",
-                viewMode === "grid" ? "auto-rows-fr grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+                viewMode === "grid"
+                  ? "auto-rows-fr grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
+                  : "grid-cols-1"
               )}
             >
               {paginatedVehicles.map((vehicle) => (
@@ -240,10 +244,12 @@ export function VehicleResultsGrid({
                   datesSelected={datesSelected}
                   drivetrain={vehicle.drivetrain}
                   horsepower={vehicle.horsepower}
+                  hostStripeReady={vehicle.hostStripeReady}
                   id={vehicle.id}
                   image={vehicle.image}
                   imageKey={vehicle.imageKey}
                   key={vehicle.id}
+                  layout={viewMode === "list" ? "list" : "grid"}
                   location={vehicle.location}
                   make={vehicle.make}
                   model={vehicle.model}
@@ -261,12 +267,27 @@ export function VehicleResultsGrid({
 
           {hasMore && (
             <div className="mt-6 flex flex-col items-center gap-3 sm:mt-8 sm:gap-4">
-              <Button className="w-full sm:w-auto" onClick={loadMore} size="lg" variant="outline">
-                Load More Vehicles
-                <ChevronRight className="ml-2 size-4" />
+              <Button
+                className="w-full sm:w-auto"
+                disabled={isLoadingMore}
+                onClick={loadMore}
+                size="lg"
+                variant="outline"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Load More Vehicles
+                    <ChevronRight className="ml-2 size-4" />
+                  </>
+                )}
               </Button>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                Showing {paginatedVehicles.length} of {filteredVehicles.length} vehicles
+                Showing {paginatedVehicles.length} vehicles
               </p>
             </div>
           )}

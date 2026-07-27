@@ -15,6 +15,7 @@ const isPublicRoute = createRouteMatcher([
   "/privacy(.*)",
   "/contact(.*)",
   "/motorsports(.*)",
+  "/coaches(.*)",
   "/api/webhooks(.*)",
 ])
 
@@ -40,11 +41,11 @@ export default clerkMiddleware(
         "img-src": [
           "*.r2.dev",
           "*.r2.cloudflarestorage.com",
-          "ik.imagekit.io",
+          "images.renegaderace.com",
           "images.unsplash.com",
           "*.vercel.app",
         ],
-        "media-src": ["ik.imagekit.io", "*.r2.dev"],
+        "media-src": ["*.r2.dev", "images.renegaderace.com"],
       },
     },
   }

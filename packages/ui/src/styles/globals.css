@@ -212,6 +212,77 @@
   animation: accordion-up 0.2s ease-out;
 }
 
+/* --- Sporty home-page motion utilities (additive) --- */
+
+/* Slow Ken Burns zoom for hero media — adds a sense of motion/speed */
+@keyframes ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+.animate-ken-burns {
+  animation: ken-burns 20s ease-out forwards;
+}
+
+/* Gentle float for overlapping cards/badges */
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-float-soft {
+  animation: float-soft 6s ease-in-out infinite;
+}
+
+/* Continuous marquee for the trusted-tracks strip */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Diagonal shine sweep for accent lines / CTAs */
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+.animate-shine-sweep {
+  animation: shine-sweep 3.5s ease-in-out infinite;
+}
+
+/* Outlined "racing number" numerals for the stats band */
+.text-stroke {
+  -webkit-text-stroke: 2px currentColor;
+  color: transparent;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-ken-burns,
+  .animate-float-soft,
+  .animate-marquee,
+  .animate-shine-sweep {
+    animation: none !important;
+  }
+}
+
 /* Custom breakpoint for 1300px */
 @media (min-width: 1300px) {
   .show-at-1300 {

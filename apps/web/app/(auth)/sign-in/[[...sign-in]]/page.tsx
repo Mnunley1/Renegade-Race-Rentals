@@ -2,14 +2,7 @@
 
 import { useSignIn, useUser } from "@clerk/nextjs"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Card, CardContent, CardFooter } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
@@ -107,14 +100,8 @@ function SignInPageContent() {
         </p>
       </div>
 
-      <Card className="border-2 bg-card shadow-xl">
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-lg sm:text-xl">Sign in to your account</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Enter your credentials below to access your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4 sm:pb-6">
+      <Card className="border bg-card shadow-sm">
+        <CardContent className="p-6">
           <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-2 text-destructive text-xs sm:p-3 sm:text-sm">

@@ -23,20 +23,16 @@ interface DriverCardProps extends ComponentProps<"div"> {
 
 function getRacingTypeLabel(racingType: "real-world" | "sim-racing" | "both"): string {
   if (racingType === "sim-racing") {
-    return "🎮 Sim Racing"
+    return "Sim Racing"
   }
   if (racingType === "both") {
-    return "🏎️🎮 Both"
+    return "Real + Sim"
   }
-  return "Real-World Racing"
+  return "Real-World"
 }
 
-const experienceColors = {
-  beginner: "bg-green-500/10 text-green-600 dark:text-green-400",
-  intermediate: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  advanced: "bg-purple-500/10 text-purple-600 dark:text-purple-600",
-  professional: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-}
+const chipClass =
+  "gap-1 border-transparent bg-muted font-normal text-muted-foreground hover:bg-muted"
 
 const MAX_BIO_PREVIEW_LENGTH = 80
 
@@ -63,29 +59,29 @@ export function DriverCard({
     <Link className="flex h-full" href={`/motorsports/drivers/${id}`}>
       <Card
         className={cn(
-          "group relative flex h-full w-full cursor-pointer flex-col overflow-hidden border-2 transition-all hover:scale-[1.02] hover:shadow-xl",
+          "group relative flex h-full w-full cursor-pointer flex-col overflow-hidden border border-border bg-card transition-all duration-300 hover:border-foreground/15 hover:shadow-[0_12px_28px_-14px_rgba(0,0,0,0.22)]",
           className
         )}
         {...props}
       >
-        <CardContent className="flex flex-1 flex-col p-4">
-          <div className="flex flex-1 flex-col space-y-3">
+        <CardContent className="flex flex-1 flex-col p-5">
+          <div className="flex flex-1 flex-col">
             <div className="flex items-start gap-4">
-              <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
+              <div className="relative size-28 shrink-0 overflow-hidden rounded-full ring-2 ring-border">
                 {avatarUrl && avatarUrl.trim() !== "" ? (
                   <Image alt={name} className="object-cover" fill src={avatarUrl} />
                 ) : (
-                  <div className="flex h-full items-center justify-center bg-primary">
-                    <User className="size-12 text-white" />
+                  <div className="flex h-full items-center justify-center bg-muted">
+                    <User className="size-14 text-muted-foreground/60" />
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-xl transition-colors group-hover:text-primary">
+                <h3 className="truncate font-semibold text-lg tracking-tight transition-colors group-hover:text-primary">
                   {name}
                 </h3>
-                <div className="mt-1.5 flex items-center gap-2 text-muted-foreground text-sm">
-                  <MapPin className="size-4" />
+                <div className="mt-1 flex items-center gap-1.5 text-muted-foreground text-sm">
+                  <MapPin className="size-4 shrink-0" />
                   <span className="truncate">{location}</span>
                 </div>
               </div>
@@ -93,23 +89,24 @@ export function DriverCard({
 
             {displayText && (
               <p
-                className={
+                className={cn(
+                  "mt-4",
                   headline
-                    ? "font-semibold text-base text-foreground"
+                    ? "font-semibold text-foreground text-sm"
                     : "line-clamp-2 text-muted-foreground text-sm leading-relaxed"
-                }
+                )}
               >
                 {displayText}
               </p>
             )}
 
-            <div className="mt-auto flex flex-wrap items-center gap-2">
-              <Badge className={experienceColors[experience]}>
-                <Award className="mr-1 size-3" />
+            <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4">
+              <Badge className={chipClass} variant="secondary">
+                <Award className="size-3 text-muted-foreground" />
                 {experience.charAt(0).toUpperCase() + experience.slice(1)}
               </Badge>
-              <Badge variant="outline">
-                {racingType ? getRacingTypeLabel(racingType) : "Real-World Racing"}
+              <Badge className={chipClass} variant="secondary">
+                {racingType ? getRacingTypeLabel(racingType) : "Real-World"}
               </Badge>
             </div>
           </div>

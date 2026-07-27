@@ -162,7 +162,15 @@ export default function DisputeDetailPage() {
             </div>
             <div>
               <Label>Created</Label>
-              <p className="mt-1">{new Date(dispute.createdAt).toLocaleString()}</p>
+              <p className="mt-1">
+                {new Date(dispute.createdAt).toLocaleString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -208,7 +216,13 @@ export default function DisputeDetailPage() {
                         : dispute.owner?.name || "Owner"}
                     </span>
                     <span className="text-muted-foreground text-xs">
-                      {new Date(msg.createdAt).toLocaleString()}
+                      {new Date(msg.createdAt).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   <p className="whitespace-pre-wrap">{msg.message}</p>
@@ -328,7 +342,15 @@ export default function DisputeDetailPage() {
             {dispute.resolvedAt && (
               <div>
                 <Label>Resolved At</Label>
-                <p className="mt-1">{new Date(dispute.resolvedAt).toLocaleString()}</p>
+                <p className="mt-1">
+                  {new Date(dispute.resolvedAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
             )}
           </CardContent>

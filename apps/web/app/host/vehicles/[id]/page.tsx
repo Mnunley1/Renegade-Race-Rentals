@@ -249,15 +249,15 @@ export default function HostVehicleDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link href="/host/dashboard">
-          <Button className="mb-4" variant="ghost">
+          <Button className="mb-4 -ml-2 text-muted-foreground" size="sm" variant="ghost">
             <ArrowLeft className="mr-2 size-4" />
-            Back to Dashboard
+            Back to dashboard
           </Button>
         </Link>
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
-            <div className="mb-2 flex items-center gap-3">
-              <h1 className="font-bold text-3xl sm:text-4xl">
+            <div className="mb-1.5 flex flex-wrap items-center gap-3">
+              <h1 className="font-bold text-3xl tracking-tight sm:text-4xl">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h1>
               {getStatusBadge()}
@@ -270,7 +270,7 @@ export default function HostVehicleDetailPage() {
             <Link href={`/vehicles/${vehicleId}`}>
               <Button size="sm" variant="outline">
                 <Eye className="mr-2 size-4" />
-                View Listing
+                View listing
               </Button>
             </Link>
             <Link href={`/host/vehicles/${vehicleId}/edit`}>
@@ -282,57 +282,51 @@ export default function HostVehicleDetailPage() {
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Key Metrics - flat, uniform KPI cards */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="font-medium text-muted-foreground text-sm">
-                Total Earnings
-              </CardTitle>
-              <DollarSign className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">${stats.totalEarnings.toLocaleString()}</div>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Earnings</span>
+                <DollarSign className="size-4 text-muted-foreground" />
+              </div>
+              <div className="mt-2 font-bold text-2xl tracking-tight">
+                ${stats.totalEarnings.toLocaleString()}
+              </div>
               <p className="mt-1 text-muted-foreground text-xs">All-time revenue</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="font-medium text-muted-foreground text-sm">
-                Total Bookings
-              </CardTitle>
-              <Users className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">{stats.totalBookings}</div>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Bookings</span>
+                <Users className="size-4 text-muted-foreground" />
+              </div>
+              <div className="mt-2 font-bold text-2xl tracking-tight">{stats.totalBookings}</div>
               <p className="mt-1 text-muted-foreground text-xs">All reservations</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="font-medium text-muted-foreground text-sm">
-                Pending Requests
-              </CardTitle>
-              <Clock className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">{stats.pendingCount}</div>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Pending</span>
+                <Clock className="size-4 text-muted-foreground" />
+              </div>
+              <div className="mt-2 font-bold text-2xl tracking-tight">{stats.pendingCount}</div>
               <p className="mt-1 text-muted-foreground text-xs">Awaiting response</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="font-medium text-muted-foreground text-sm">
-                Upcoming Trips
-              </CardTitle>
-              <CalendarIcon className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">{stats.upcomingCount}</div>
-              <p className="mt-1 text-muted-foreground text-xs">Confirmed bookings</p>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Upcoming</span>
+                <CalendarIcon className="size-4 text-muted-foreground" />
+              </div>
+              <div className="mt-2 font-bold text-2xl tracking-tight">{stats.upcomingCount}</div>
+              <p className="mt-1 text-muted-foreground text-xs">Confirmed trips</p>
             </CardContent>
           </Card>
         </div>
@@ -342,47 +336,44 @@ export default function HostVehicleDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Main Content */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Pending Reservations - Priority */}
+          {/* Pending Reservations - the single "needs attention" zone */}
           {stats.pendingCount > 0 && (
-            <Card className="border-yellow-200 bg-yellow-50/50 dark:border-yellow-900 dark:bg-yellow-950/20">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="size-5 text-yellow-600 dark:text-yellow-400" />
-                      Action Required
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {stats.pendingCount} booking{" "}
-                      {stats.pendingCount === 1 ? "request" : "requests"} waiting for your response
-                    </CardDescription>
-                  </div>
-                  <Link href={`/host/reservations?status=pending&vehicleId=${vehicleId}`}>
-                    <Button size="sm" variant="outline">
-                      View All
-                      <ArrowRight className="ml-2 size-4" />
-                    </Button>
-                  </Link>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Needs your attention</CardTitle>
+                  <CardDescription className="mt-1">
+                    {stats.pendingCount} booking {stats.pendingCount === 1 ? "request" : "requests"}{" "}
+                    awaiting your response
+                  </CardDescription>
                 </div>
+                <Link href={`/host/reservations?status=pending&vehicleId=${vehicleId}`}>
+                  <Button size="sm" variant="ghost">
+                    View all
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {pendingReservations.slice(0, 3).map((reservation: any) => {
                     const renterName = reservation.renter?.name || "Guest"
                     return (
                       <Link href={`/host/reservations/${reservation._id}`} key={reservation._id}>
-                        <div className="flex items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:bg-muted/50">
+                        <div className="flex items-center gap-4 rounded-lg p-2 transition-colors hover:bg-muted/50">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-sm">{renterName}</p>
+                            <p className="truncate font-semibold text-sm">{renterName}</p>
                             <p className="text-muted-foreground text-xs">
-                              {formatDate(reservation.startDate)} -{" "}
+                              {formatDate(reservation.startDate)} –{" "}
                               {formatDate(reservation.endDate)}
                             </p>
-                            <p className="mt-1 font-semibold text-sm">
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-sm">
                               ${Math.round((reservation.totalAmount || 0) / 100).toLocaleString()}
                             </p>
+                            <span className="text-muted-foreground text-xs">Review →</span>
                           </div>
-                          <Button size="sm">Review</Button>
                         </div>
                       </Link>
                     )
@@ -395,45 +386,33 @@ export default function HostVehicleDetailPage() {
           {/* Upcoming Reservations */}
           {stats.upcomingCount > 0 && (
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Upcoming Reservations</CardTitle>
-                    <CardDescription className="mt-1">
-                      Next {stats.upcomingCount} confirmed{" "}
-                      {stats.upcomingCount === 1 ? "booking" : "bookings"}
-                    </CardDescription>
-                  </div>
-                  <Link href={`/host/reservations?vehicleId=${vehicleId}`}>
-                    <Button size="sm" variant="outline">
-                      View All
-                      <ArrowRight className="ml-2 size-4" />
-                    </Button>
-                  </Link>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Upcoming reservations</CardTitle>
+                <Link href={`/host/reservations?vehicleId=${vehicleId}`}>
+                  <Button size="sm" variant="ghost">
+                    View all
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {upcomingReservations.map((reservation: any) => {
                     const renterName = reservation.renter?.name || "Guest"
                     return (
                       <Link href={`/host/reservations/${reservation._id}`} key={reservation._id}>
-                        <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
+                        <div className="flex items-center gap-4 rounded-lg p-2 transition-colors hover:bg-muted/50">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-sm">{renterName}</p>
+                            <p className="truncate font-semibold text-sm">{renterName}</p>
                             <p className="text-muted-foreground text-xs">
-                              {formatDate(reservation.startDate)} -{" "}
-                              {formatDate(reservation.endDate)}
-                            </p>
-                            <p className="mt-1 text-sm">
-                              {reservation.totalDays} {reservation.totalDays === 1 ? "day" : "days"}
+                              {formatDate(reservation.startDate)} –{" "}
+                              {formatDate(reservation.endDate)} • {reservation.totalDays}{" "}
+                              {reservation.totalDays === 1 ? "day" : "days"}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-sm">
-                              ${Math.round((reservation.totalAmount || 0) / 100).toLocaleString()}
-                            </p>
-                          </div>
+                          <p className="font-semibold text-sm">
+                            ${Math.round((reservation.totalAmount || 0) / 100).toLocaleString()}
+                          </p>
                         </div>
                       </Link>
                     )
@@ -571,19 +550,19 @@ export default function HostVehicleDetailPage() {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle className="text-base">Quick actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-1">
               <Link className="block" href={`/host/vehicles/${vehicleId}/availability`}>
-                <Button className="w-full justify-start" size="sm" variant="outline">
-                  <CalendarIcon className="mr-2 size-4" />
-                  Manage Availability
+                <Button className="w-full justify-start font-normal" variant="ghost">
+                  <CalendarIcon className="mr-3 size-4 text-muted-foreground" />
+                  Manage availability
                 </Button>
               </Link>
               <Link className="block" href={`/host/reservations?vehicleId=${vehicleId}`}>
-                <Button className="w-full justify-start" size="sm" variant="outline">
-                  <Users className="mr-2 size-4" />
-                  View Reservations
+                <Button className="w-full justify-start font-normal" variant="ghost">
+                  <Users className="mr-3 size-4 text-muted-foreground" />
+                  View reservations
                   {stats.pendingCount > 0 && (
                     <Badge className="ml-auto" variant="destructive">
                       {stats.pendingCount}

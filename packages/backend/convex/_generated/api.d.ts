@@ -17,6 +17,11 @@ import type * as activity from "../activity.js";
 import type * as admin from "../admin.js";
 import type * as auditLog from "../auditLog.js";
 import type * as availability from "../availability.js";
+import type * as coachAvailability from "../coachAvailability.js";
+import type * as coachProfiles from "../coachProfiles.js";
+import type * as coachingBookings from "../coachingBookings.js";
+import type * as coachingPayments from "../coachingPayments.js";
+import type * as coachingReviews from "../coachingReviews.js";
 import type * as conversations from "../conversations.js";
 import type * as crons from "../crons.js";
 import type * as damageInvoices from "../damageInvoices.js";
@@ -37,6 +42,7 @@ import type * as invoices from "../invoices.js";
 import type * as logger from "../logger.js";
 import type * as messageTemplates from "../messageTemplates.js";
 import type * as messages from "../messages.js";
+import type * as migrations from "../migrations.js";
 import type * as motorsportsMatching from "../motorsportsMatching.js";
 import type * as notificationCron from "../notificationCron.js";
 import type * as notifications from "../notifications.js";
@@ -53,6 +59,7 @@ import type * as reservations from "../reservations.js";
 import type * as reviewStats from "../reviewStats.js";
 import type * as reviews from "../reviews.js";
 import type * as sanitize from "../sanitize.js";
+import type * as seedCoaches from "../seedCoaches.js";
 import type * as stripe from "../stripe.js";
 import type * as teamApplications from "../teamApplications.js";
 import type * as teamDriverConnections from "../teamDriverConnections.js";
@@ -63,6 +70,7 @@ import type * as tracks from "../tracks.js";
 import type * as userBlocks from "../userBlocks.js";
 import type * as users from "../users.js";
 import type * as vehicleAnalytics from "../vehicleAnalytics.js";
+import type * as vehicleMakes from "../vehicleMakes.js";
 import type * as vehicles from "../vehicles.js";
 import type * as webhookIdempotency from "../webhookIdempotency.js";
 
@@ -74,11 +82,22 @@ import type * as webhookIdempotency from "../webhookIdempotency.js";
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   admin: typeof admin;
   auditLog: typeof auditLog;
   availability: typeof availability;
+  coachAvailability: typeof coachAvailability;
+  coachProfiles: typeof coachProfiles;
+  coachingBookings: typeof coachingBookings;
+  coachingPayments: typeof coachingPayments;
+  coachingReviews: typeof coachingReviews;
   conversations: typeof conversations;
   crons: typeof crons;
   damageInvoices: typeof damageInvoices;
@@ -99,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   logger: typeof logger;
   messageTemplates: typeof messageTemplates;
   messages: typeof messages;
+  migrations: typeof migrations;
   motorsportsMatching: typeof motorsportsMatching;
   notificationCron: typeof notificationCron;
   notifications: typeof notifications;
@@ -115,6 +135,7 @@ declare const fullApi: ApiFromModules<{
   reviewStats: typeof reviewStats;
   reviews: typeof reviews;
   sanitize: typeof sanitize;
+  seedCoaches: typeof seedCoaches;
   stripe: typeof stripe;
   teamApplications: typeof teamApplications;
   teamDriverConnections: typeof teamDriverConnections;
@@ -125,13 +146,32 @@ declare const fullApi: ApiFromModules<{
   userBlocks: typeof userBlocks;
   users: typeof users;
   vehicleAnalytics: typeof vehicleAnalytics;
+  vehicleMakes: typeof vehicleMakes;
   vehicles: typeof vehicles;
   webhookIdempotency: typeof webhookIdempotency;
 }>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">

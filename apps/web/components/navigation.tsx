@@ -18,6 +18,8 @@ import {
   FileText,
   Heart,
   Home,
+  GraduationCap,
+  Heart,
   LogOut,
   Menu,
   MessageSquare,
@@ -33,6 +35,12 @@ import { InboxButton } from "@/components/inbox-button"
 import { NotificationBell } from "@/components/notification-bell"
 import { UserMenu } from "@/components/user-menu"
 import { api } from "@/lib/convex"
+
+const NAV_LINKS = [
+  { href: "/vehicles", label: "Vehicles" },
+  { href: "/motorsports", label: "Motorsports" },
+  { href: "/coaches", label: "Coaches" },
+] as const
 
 const sidebarLinkClass =
   "flex items-center gap-3 rounded-md px-3 py-2 font-medium text-sm transition-colors hover:bg-accent"
@@ -88,11 +96,46 @@ function HostingSidebarLink({
   )
 }
 
+function CoachingSidebarLink({
+  hasProfile,
+  pathname,
+}: {
+  hasProfile: boolean
+  pathname: string | null
+}) {
+  if (!hasProfile) {
+    return (
+      <SheetClose asChild>
+        <Link className={cn(sidebarLinkClass, "text-muted-foreground")} href="/coach/onboarding">
+          <GraduationCap className="size-4" />
+          Become a Coach
+        </Link>
+      </SheetClose>
+    )
+  }
+
+  return (
+    <SheetClose asChild>
+      <Link
+        className={cn(
+          sidebarLinkClass,
+          pathname?.startsWith("/coach") ? "bg-accent text-foreground" : "text-muted-foreground"
+        )}
+        href="/coach/dashboard"
+      >
+        <GraduationCap className="size-4" />
+        Coach Dashboard
+      </Link>
+    </SheetClose>
+  )
+}
+
 function MobileSidebar() {
   const pathname = usePathname()
   const { user, isSignedIn } = useUser()
   const { signOut } = useAuth()
   const onboardingStatus = useQuery(api.users.getHostOnboardingStatus, isSignedIn ? {} : "skip")
+  const coachProfile = useQuery(api.coachProfiles.getByUser, isSignedIn ? {} : "skip")
   const unreadCount = useQuery(
     api.messages.getUnreadCount,
     isSignedIn && user?.id ? { userId: user.id } : "skip"
@@ -206,6 +249,19 @@ function MobileSidebar() {
                   Deals
                 </Link>
               </SheetClose>
+              <SheetClose asChild>
+                <Link
+                  className={cn(
+                    sidebarLinkClass,
+                    pathname === "/coaches" || pathname?.startsWith("/coaches")
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  href="/coaches"
+                >
+                  Coaches
+                </Link>
+              </SheetClose>
             </div>
 
             {isSignedIn && (
@@ -265,10 +321,11 @@ function MobileSidebar() {
                   </SheetClose>
                 </div>
 
-                {/* Hosting */}
+                {/* Hosting & coaching */}
                 <Separator className="my-4" />
                 <div className="space-y-1">
                   <HostingSidebarLink onboardingStatus={onboardingStatus} pathname={pathname} />
+                  <CoachingSidebarLink hasProfile={!!coachProfile} pathname={pathname} />
                 </div>
 
                 {/* Account */}
@@ -347,7 +404,7 @@ export function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 border-border border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto w-full max-w-7xl px-2 sm:px-4 lg:px-6">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center gap-4">
             <MobileSidebar />
@@ -446,13 +503,31 @@ export function Navigation() {
                   </Link>
                 </>
               )}
+              {NAV_LINKS.map((link) => (
+                <Link
+                  className={cn(
+                    "font-medium text-sm transition-colors hover:text-foreground",
+                    pathname === link.href || pathname?.startsWith(`${link.href}/`)
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  href={link.href}
+                  key={link.href}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <HostNavLink className="hidden md:flex" />
-            <InboxButton />
-            <NotificationBell />
+          <div className="flex items-center gap-1.5">
+            <HostNavLink className="hidden md:inline-flex" />
+            {isSignedIn && (
+              <>
+                <InboxButton />
+                <NotificationBell />
+              </>
+            )}
             <UserMenu />
           </div>
         </div>

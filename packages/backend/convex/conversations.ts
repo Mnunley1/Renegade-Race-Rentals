@@ -1,5 +1,25 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
+import { mutation, type QueryCtx, query } from "./_generated/server"
+
+// Resolve the primary (or first available) image key for a vehicle thumbnail
+async function getVehicleThumbnailKey(
+  ctx: QueryCtx,
+  vehicleId: Id<"vehicles"> | undefined
+): Promise<string | null> {
+  if (!vehicleId) return null
+  const primary = await ctx.db
+    .query("vehicleImages")
+    .withIndex("by_vehicle_primary", (q) => q.eq("vehicleId", vehicleId).eq("isPrimary", true))
+    .first()
+  const image =
+    primary ??
+    (await ctx.db
+      .query("vehicleImages")
+      .withIndex("by_vehicle", (q) => q.eq("vehicleId", vehicleId))
+      .first())
+  return image?.r2Key ?? null
+}
 
 // Get conversations for a user (as renter or owner)
 export const getByUser = query({
@@ -44,7 +64,7 @@ export const getByUser = query({
     // Get vehicle and user details
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (conversation) => {
-        const [vehicle, renter, owner] = await Promise.all([
+        const [vehicle, renter, owner, vehicleImageKey] = await Promise.all([
           conversation.vehicleId ? ctx.db.get(conversation.vehicleId) : null,
           ctx.db
             .query("users")
@@ -54,12 +74,16 @@ export const getByUser = query({
             .query("users")
             .withIndex("by_external_id", (q) => q.eq("externalId", conversation.ownerId))
             .first(),
+          getVehicleThumbnailKey(ctx, conversation.vehicleId),
         ])
 
         // Get team/driver info for motorsports conversations
         const team = conversation.teamId ? await ctx.db.get(conversation.teamId) : null
         const driverProfile = conversation.driverProfileId
           ? await ctx.db.get(conversation.driverProfileId)
+          : null
+        const coachProfile = conversation.coachProfileId
+          ? await ctx.db.get(conversation.coachProfileId)
           : null
 
         // Get reservation info if linked
@@ -86,10 +110,12 @@ export const getByUser = query({
         return {
           ...conversation,
           vehicle,
+          vehicleImageKey,
           renter,
           owner,
           team,
           driverProfile,
+          coachProfile,
           reservation,
         }
       })
@@ -161,7 +187,7 @@ export const getById = query({
       throw new Error("Conversation not found")
     }
 
-    const [vehicle, renter, owner] = await Promise.all([
+    const [vehicle, renter, owner, vehicleImageKey] = await Promise.all([
       conversation.vehicleId ? ctx.db.get(conversation.vehicleId) : null,
       ctx.db
         .query("users")
@@ -171,11 +197,15 @@ export const getById = query({
         .query("users")
         .withIndex("by_external_id", (q) => q.eq("externalId", conversation.ownerId))
         .first(),
+      getVehicleThumbnailKey(ctx, conversation.vehicleId),
     ])
 
     const team = conversation.teamId ? await ctx.db.get(conversation.teamId) : null
     const driverProfile = conversation.driverProfileId
       ? await ctx.db.get(conversation.driverProfileId)
+      : null
+    const coachProfile = conversation.coachProfileId
+      ? await ctx.db.get(conversation.coachProfileId)
       : null
 
     // Get reservation info if linked
@@ -202,10 +232,12 @@ export const getById = query({
     return {
       ...conversation,
       vehicle,
+      vehicleImageKey,
       renter,
       owner,
       team,
       driverProfile,
+      coachProfile,
       reservation,
     }
   },
@@ -413,6 +445,91 @@ export const createMotorsportsConversation = mutation({
       createdAt: now,
       updatedAt: now,
     })
+  },
+})
+
+export const createCoachingConversation = mutation({
+  args: {
+    coachProfileId: v.id("coachProfiles"),
+    message: v.string(),
+    eventName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error("Not authenticated")
+    }
+    const userId = identity.subject
+
+    const profile = await ctx.db.get(args.coachProfileId)
+    if (!profile) {
+      throw new Error("Coach profile not found")
+    }
+    if (profile.userId === userId) {
+      throw new Error("Cannot contact your own coach profile")
+    }
+
+    const trimmed = args.message.trim()
+    if (!trimmed) {
+      throw new Error("Message is required")
+    }
+
+    // Reuse existing coaching conversation between this renter and this coach profile if any
+    const existing = await ctx.db
+      .query("conversations")
+      .withIndex("by_renter", (q) => q.eq("renterId", userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("ownerId"), profile.userId),
+          q.eq(q.field("conversationType"), "coaching"),
+          q.eq(q.field("coachProfileId"), args.coachProfileId)
+        )
+      )
+      .first()
+
+    const now = Date.now()
+    const fullMessage = args.eventName?.trim()
+      ? `[Event: ${args.eventName.trim()}]\n\n${trimmed}`
+      : trimmed
+
+    let conversationId: Id<"conversations">
+    if (existing) {
+      conversationId = existing._id
+      await ctx.db.patch(existing._id, {
+        lastMessageAt: now,
+        lastMessageText: fullMessage,
+        lastMessageSenderId: userId,
+        unreadCountOwner: (existing.unreadCountOwner ?? 0) + 1,
+        isActive: true,
+        updatedAt: now,
+      })
+    } else {
+      conversationId = await ctx.db.insert("conversations", {
+        renterId: userId,
+        ownerId: profile.userId,
+        conversationType: "coaching",
+        coachProfileId: args.coachProfileId,
+        lastMessageAt: now,
+        lastMessageText: fullMessage,
+        lastMessageSenderId: userId,
+        unreadCountRenter: 0,
+        unreadCountOwner: 1,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    await ctx.db.insert("messages", {
+      conversationId,
+      senderId: userId,
+      content: fullMessage,
+      messageType: "text",
+      isRead: false,
+      createdAt: now,
+    })
+
+    return conversationId
   },
 })
 
