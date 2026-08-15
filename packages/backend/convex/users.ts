@@ -12,6 +12,9 @@ import {
 import { getWelcomeEmailTemplate, sendTransactionalEmail } from "./emails"
 import { r2 } from "./r2"
 
+/** Matches Clerk/Convex placeholder names like "null null" from `${null} ${null}`. */
+const NULLISH_NAME_RE = /^(null|undefined)(\s+(null|undefined))+$/i
+
 export const current = query({
   args: {},
   handler: async (ctx) => await getCurrentUser(ctx),
@@ -51,16 +54,41 @@ export const getById = query({
   },
 })
 
+function isPlaceholderUserName(name: string | null | undefined): boolean {
+  const trimmed = name?.trim() ?? ""
+  if (!trimmed) return true
+  const lower = trimmed.toLowerCase()
+  return (
+    lower === "unknown user" ||
+    lower === "null" ||
+    lower === "undefined" ||
+    NULLISH_NAME_RE.test(trimmed)
+  )
+}
+
+/** Build a display name from Clerk parts — never stringifies null into "null null". */
+function displayNameFromClerkParts(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined
+): string {
+  return [firstName, lastName]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter((part) => part.length > 0 && !isPlaceholderUserName(part))
+    .join(" ")
+}
+
 export const upsertFromClerk = internalMutation({
   args: { data: v.any() as Validator<UserJSON> }, // no runtime validation, trust Clerk
   async handler(ctx, { data }) {
     const userData = data as UserJSON // Type assertion for Clerk data
     const user = await userByExternalId(ctx, data.id)
     const isNewUser = user === null
-    const userName = `${userData.first_name} ${userData.last_name}`.trim() || "Unknown User"
+    const nameFromClerk = displayNameFromClerkParts(userData.first_name, userData.last_name)
     const userEmail = userData.email_addresses?.[0]?.email_address
+    const fallbackName = userEmail || "Unknown User"
 
     if (isNewUser) {
+      const userName = nameFromClerk || fallbackName
       await ctx.db.insert("users", {
         externalId: data.id,
         name: userName,
@@ -80,10 +108,16 @@ export const upsertFromClerk = internalMutation({
         }
       }
     } else {
-      await ctx.db.patch(user._id, {
-        name: userName,
-        email: userEmail || user.email, // Update email if provided
-      })
+      // Only overwrite name when Clerk has real name parts, or the stored name is a placeholder.
+      const updates: { name?: string; email?: string } = {
+        email: userEmail || user.email,
+      }
+      if (nameFromClerk) {
+        updates.name = nameFromClerk
+      } else if (isPlaceholderUserName(user.name)) {
+        updates.name = fallbackName
+      }
+      await ctx.db.patch(user._id, updates)
     }
   },
 })
