@@ -24,6 +24,8 @@ import { handleErrorWithContext } from "@/lib/error-handler"
 
 type RacingType = "real-world" | "sim-racing" | "both"
 
+const WHITESPACE_RE = /\s+/
+
 function dollarsToCents(value: string): number | undefined {
   const trimmed = value.trim()
   if (!trimmed) return
@@ -35,6 +37,47 @@ function dollarsToCents(value: string): number | undefined {
 function centsToDollars(cents?: number): string {
   if (cents === undefined) return ""
   return (cents / 100).toString()
+}
+
+function splitDisplayName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(WHITESPACE_RE).filter(Boolean)
+  const first = parts[0] ?? ""
+  if (parts.length <= 1) return { firstName: first, lastName: "" }
+  return { firstName: first, lastName: parts.slice(1).join(" ") }
+}
+
+function optionalContactInfo(email: string, phone: string) {
+  const trimmedEmail = email.trim()
+  const trimmedPhone = phone.trim()
+  if (!(trimmedEmail || trimmedPhone)) return
+  return {
+    email: trimmedEmail || undefined,
+    phone: trimmedPhone || undefined,
+  }
+}
+
+function optionalSocialLinks(instagram: string, website: string) {
+  const trimmedInstagram = instagram.trim()
+  const trimmedWebsite = website.trim()
+  if (!(trimmedInstagram || trimmedWebsite)) return
+  return {
+    instagram: trimmedInstagram || undefined,
+    website: trimmedWebsite || undefined,
+  }
+}
+
+function resolveInitialDisplayName(
+  convexName: string | undefined,
+  clerkFullName: string | null | undefined,
+  clerkFirstName: string | null | undefined,
+  clerkLastName: string | null | undefined
+) {
+  const rawConvex = convexName?.trim() ?? ""
+  const fromConvex =
+    rawConvex && rawConvex !== "Unknown User" && rawConvex !== "Unknown Coach" ? rawConvex : ""
+  const fromClerk =
+    clerkFullName?.trim() || [clerkFirstName, clerkLastName].filter(Boolean).join(" ").trim() || ""
+  return fromConvex || fromClerk
 }
 
 function ChipInput({
@@ -106,11 +149,14 @@ function ChipInput({
 
 export default function CoachOnboardingPage() {
   const router = useRouter()
-  const { isSignedIn, isLoaded } = useUser()
+  const { isSignedIn, isLoaded, user: clerkUser } = useUser()
   const existing = useQuery(api.coachProfiles.getByUser)
+  const convexUser = useQuery(api.users.current)
   const createProfile = useMutation(api.coachProfiles.create)
   const updateProfile = useMutation(api.coachProfiles.update)
+  const updateUserProfile = useMutation(api.users.updateProfile)
 
+  const [displayName, setDisplayName] = useState("")
   const [headline, setHeadline] = useState("")
   const [bio, setBio] = useState("")
   const [location, setLocation] = useState("")
@@ -128,6 +174,7 @@ export default function CoachOnboardingPage() {
   const [website, setWebsite] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [nameHydrated, setNameHydrated] = useState(false)
 
   useEffect(() => {
     if (!hydrated && existing) {
@@ -150,6 +197,23 @@ export default function CoachOnboardingPage() {
     }
   }, [existing, hydrated])
 
+  useEffect(() => {
+    if (nameHydrated) return
+    // Wait until Clerk is loaded and Convex user query has settled (or signed-out case handled above).
+    if (!(isLoaded && isSignedIn)) return
+    if (convexUser === undefined) return
+
+    setDisplayName(
+      resolveInitialDisplayName(
+        convexUser?.name,
+        clerkUser?.fullName,
+        clerkUser?.firstName,
+        clerkUser?.lastName
+      )
+    )
+    setNameHydrated(true)
+  }, [convexUser, clerkUser, isLoaded, isSignedIn, nameHydrated])
+
   if (isLoaded && !isSignedIn) {
     return (
       <div className="container mx-auto max-w-2xl px-4 py-16 text-center">
@@ -169,6 +233,12 @@ export default function CoachOnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const trimmedName = displayName.trim()
+    if (!trimmedName) {
+      toast.error("Your name is required")
+      return
+    }
+
     if (!(bio.trim() && location.trim() && specialties.length > 0)) {
       toast.error("Bio, location, and at least one specialty are required")
       return
@@ -182,60 +252,40 @@ export default function CoachOnboardingPage() {
       return
     }
 
-    const contactInfo =
-      contactEmail.trim() || contactPhone.trim()
-        ? {
-            email: contactEmail.trim() || undefined,
-            phone: contactPhone.trim() || undefined,
-          }
-        : undefined
-
-    const socialLinks =
-      instagram.trim() || website.trim()
-        ? {
-            instagram: instagram.trim() || undefined,
-            website: website.trim() || undefined,
-          }
-        : undefined
-
+    const contactInfo = optionalContactInfo(contactEmail, contactPhone)
+    const socialLinks = optionalSocialLinks(instagram, website)
     const yearsNum = yearsExperience.trim() ? Number.parseInt(yearsExperience, 10) : undefined
+    const racingTypeValue = racingType === "unset" ? undefined : racingType
+    const profileFields = {
+      headline: headline.trim() || undefined,
+      bio,
+      location,
+      yearsExperience: yearsNum,
+      racingType: racingTypeValue,
+      specialties,
+      certifications: certifications.length > 0 ? certifications : undefined,
+      tracksCoachedAt: tracks.length > 0 ? tracks : undefined,
+      hourlyRate: hourly,
+      halfDayRate: halfDay,
+      fullDayRate: fullDay,
+      contactInfo,
+      socialLinks,
+    }
 
     setSubmitting(true)
     try {
+      // Coach directory names come from users.name — keep Clerk + Convex in sync.
+      const { firstName, lastName } = splitDisplayName(trimmedName)
+      if (clerkUser) {
+        await clerkUser.update({ firstName, lastName })
+      }
+      await updateUserProfile({ name: trimmedName })
+
       if (isEdit) {
-        await updateProfile({
-          profileId: existing._id,
-          headline: headline.trim() || undefined,
-          bio,
-          location,
-          yearsExperience: yearsNum,
-          racingType: racingType === "unset" ? undefined : racingType,
-          specialties,
-          certifications: certifications.length > 0 ? certifications : undefined,
-          tracksCoachedAt: tracks.length > 0 ? tracks : undefined,
-          hourlyRate: hourly,
-          halfDayRate: halfDay,
-          fullDayRate: fullDay,
-          contactInfo,
-          socialLinks,
-        })
+        await updateProfile({ profileId: existing._id, ...profileFields })
         toast.success("Coach profile updated")
       } else {
-        await createProfile({
-          headline: headline.trim() || undefined,
-          bio,
-          location,
-          yearsExperience: yearsNum,
-          racingType: racingType === "unset" ? undefined : racingType,
-          specialties,
-          certifications: certifications.length > 0 ? certifications : undefined,
-          tracksCoachedAt: tracks.length > 0 ? tracks : undefined,
-          hourlyRate: hourly,
-          halfDayRate: halfDay,
-          fullDayRate: fullDay,
-          contactInfo,
-          socialLinks,
-        })
+        await createProfile(profileFields)
         toast.success("Coach profile created")
       }
       router.push("/coach/dashboard")
@@ -270,6 +320,18 @@ export default function CoachOnboardingPage() {
             <CardTitle>About you</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Display name *</Label>
+              <Input
+                autoComplete="name"
+                id="displayName"
+                maxLength={80}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Your name as shown to drivers"
+                required
+                value={displayName}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="headline">Headline</Label>
               <Input
