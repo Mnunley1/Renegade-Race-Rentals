@@ -144,6 +144,7 @@ export const createCheckoutSession = action({
 
     const { platformFee } = await ctx.runMutation(api.stripe.calculatePlatformFee, {
       amount: booking.totalAmount,
+      providerExternalId: booking.coachUserId,
     })
 
     // Get or create Stripe customer for the renter (no component, direct Stripe API)

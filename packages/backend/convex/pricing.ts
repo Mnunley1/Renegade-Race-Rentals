@@ -32,15 +32,41 @@ export function calculateReservationTotal(
   return baseAmount + calculateAddOnsTotal(addOns, totalDays)
 }
 
-/** Calculate platform fee with percentage, clamped to min/max bounds */
+/**
+ * Resolve the fee % a provider pays: never above their cap, and never above
+ * the current global rate (so if global drops below the cap, they get the lower rate).
+ */
+export function resolvePlatformFeePercentage(
+  globalFeePercentage: number,
+  platformFeeCapPercentage?: number | null
+): number {
+  if (platformFeeCapPercentage == null) {
+    return globalFeePercentage
+  }
+  return Math.min(globalFeePercentage, platformFeeCapPercentage)
+}
+
+/** Whether the early-adopter signup promo is active at `now`. */
+export function isEarlyAdopterPromoActive(
+  settings: {
+    earlyAdopterPromoStartsAt?: number
+    earlyAdopterPromoEndsAt?: number
+  } | null,
+  now: number = Date.now()
+): boolean {
+  if (!settings) return false
+  const start = settings.earlyAdopterPromoStartsAt
+  const end = settings.earlyAdopterPromoEndsAt
+  if (start == null || end == null) return false
+  return now >= start && now <= end
+}
+
+/** Calculate platform fee as a percentage of amount (no min/max dollar clamps). */
 export function calculatePlatformFeeAmount(
   amount: number,
-  feePercentage: number,
-  minimumFee: number,
-  maximumFee?: number
+  feePercentage: number
 ): { platformFee: number; ownerAmount: number } {
-  const calculatedFee = Math.round((amount * feePercentage) / 100)
-  const platformFee = Math.max(minimumFee, Math.min(calculatedFee, maximumFee ?? calculatedFee))
+  const platformFee = Math.round((amount * feePercentage) / 100)
   return {
     platformFee,
     ownerAmount: amount - platformFee,

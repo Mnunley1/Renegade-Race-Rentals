@@ -6,7 +6,7 @@ import type { Id } from "./_generated/dataModel"
 import { action, internalAction, mutation, query } from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDaysBetween, parseLocalDate } from "./dateUtils"
-import { calculateAddOnsTotal, calculatePlatformFeeAmount, calculateRefundAmount } from "./pricing"
+import { calculateAddOnsTotal, calculatePlatformFeeAmount, calculateRefundAmount, resolvePlatformFeePercentage } from "./pricing"
 import {
   getPaymentFailedEmailTemplate,
   getPaymentSucceededEmailTemplate,
@@ -115,6 +115,7 @@ function getStripe(): Stripe {
 export const calculatePlatformFee = mutation({
   args: {
     amount: v.number(), // Amount in cents
+    providerExternalId: v.string(), // Provider who pays the fee (owner, coach, etc.)
   },
   handler: async (ctx, args) => {
     // Validate amount
@@ -127,27 +128,26 @@ export const calculatePlatformFee = mutation({
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .first()
 
-    if (!settings) {
-      // Default platform settings if none exist
-      return calculatePlatformFeeAmount(args.amount, 5, 0)
-    }
+    const globalFeePercentage = settings?.platformFeePercentage ?? 5
 
-    const feePercentage = settings.platformFeePercentage
-
-    // Validate fee percentage (should already be validated on insert, but double-check)
-    if (feePercentage < 0 || feePercentage > 100) {
+    if (globalFeePercentage < 0 || globalFeePercentage > 100) {
       throwError(
         ErrorCode.STRIPE_ACCOUNT_INCOMPLETE,
         "Platform fee percentage must be between 0 and 100"
       )
     }
 
-    return calculatePlatformFeeAmount(
-      args.amount,
-      feePercentage,
-      settings.minimumPlatformFee,
-      settings.maximumPlatformFee
+    const provider = await ctx.db
+      .query("users")
+      .withIndex("by_external_id", (q) => q.eq("externalId", args.providerExternalId))
+      .first()
+
+    const feePercentage = resolvePlatformFeePercentage(
+      globalFeePercentage,
+      provider?.platformFeeCapPercentage
     )
+
+    return calculatePlatformFeeAmount(args.amount, feePercentage)
   },
 })
 
@@ -165,8 +165,7 @@ export const initializePlatformSettings = mutation({
 
     const settingsId = await ctx.db.insert("platformSettings", {
       platformFeePercentage: 5, // 5% platform fee
-      minimumPlatformFee: 100, // $1.00 minimum fee
-      maximumPlatformFee: 5000, // $50.00 maximum fee
+      earlyAdopterFeeCapPercentage: 3,
       isActive: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -197,8 +196,9 @@ export const getPlatformSettings = query({
 export const updatePlatformSettings = mutation({
   args: {
     platformFeePercentage: v.number(),
-    minimumPlatformFee: v.number(),
-    maximumPlatformFee: v.optional(v.number()),
+    earlyAdopterPromoStartsAt: v.optional(v.union(v.number(), v.null())),
+    earlyAdopterPromoEndsAt: v.optional(v.union(v.number(), v.null())),
+    earlyAdopterFeeCapPercentage: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await checkAdmin(ctx)
@@ -211,25 +211,44 @@ export const updatePlatformSettings = mutation({
       )
     }
 
-    if (args.minimumPlatformFee < 0) {
-      throwError(ErrorCode.STRIPE_ACCOUNT_INCOMPLETE, "Minimum platform fee must be positive")
-    }
-
     if (
-      args.maximumPlatformFee !== undefined &&
-      args.maximumPlatformFee < args.minimumPlatformFee
+      args.earlyAdopterFeeCapPercentage !== undefined &&
+      (args.earlyAdopterFeeCapPercentage < 0 || args.earlyAdopterFeeCapPercentage > 100)
     ) {
       throwError(
         ErrorCode.STRIPE_ACCOUNT_INCOMPLETE,
-        "Maximum platform fee must be greater than or equal to minimum fee"
+        "Early adopter fee cap must be between 0 and 100"
       )
     }
 
-    // Deactivate old settings
     const oldSettings = await ctx.db
       .query("platformSettings")
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .first()
+
+    const nextPromoStartsAt =
+      args.earlyAdopterPromoStartsAt === undefined
+        ? oldSettings?.earlyAdopterPromoStartsAt
+        : args.earlyAdopterPromoStartsAt === null
+          ? undefined
+          : args.earlyAdopterPromoStartsAt
+    const nextPromoEndsAt =
+      args.earlyAdopterPromoEndsAt === undefined
+        ? oldSettings?.earlyAdopterPromoEndsAt
+        : args.earlyAdopterPromoEndsAt === null
+          ? undefined
+          : args.earlyAdopterPromoEndsAt
+
+    if (
+      nextPromoStartsAt != null &&
+      nextPromoEndsAt != null &&
+      nextPromoEndsAt < nextPromoStartsAt
+    ) {
+      throwError(
+        ErrorCode.STRIPE_ACCOUNT_INCOMPLETE,
+        "Early adopter promo end must be on or after the start"
+      )
+    }
 
     if (oldSettings) {
       await ctx.db.patch(oldSettings._id, {
@@ -238,11 +257,16 @@ export const updatePlatformSettings = mutation({
       })
     }
 
-    // Create new active settings
+    const earlyAdopterFeeCapPercentage =
+      args.earlyAdopterFeeCapPercentage ?? oldSettings?.earlyAdopterFeeCapPercentage ?? 3
+
+    // Create new active settings (preserve promo fields / stripe account from prior row)
     const newSettingsId = await ctx.db.insert("platformSettings", {
       platformFeePercentage: args.platformFeePercentage,
-      minimumPlatformFee: args.minimumPlatformFee,
-      maximumPlatformFee: args.maximumPlatformFee,
+      earlyAdopterPromoStartsAt: nextPromoStartsAt,
+      earlyAdopterPromoEndsAt: nextPromoEndsAt,
+      earlyAdopterFeeCapPercentage,
+      stripeAccountId: oldSettings?.stripeAccountId,
       isActive: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -257,14 +281,16 @@ export const updatePlatformSettings = mutation({
       previousState: oldSettings
         ? {
             platformFeePercentage: oldSettings.platformFeePercentage,
-            minimumPlatformFee: oldSettings.minimumPlatformFee,
-            maximumPlatformFee: oldSettings.maximumPlatformFee,
+            earlyAdopterPromoStartsAt: oldSettings.earlyAdopterPromoStartsAt,
+            earlyAdopterPromoEndsAt: oldSettings.earlyAdopterPromoEndsAt,
+            earlyAdopterFeeCapPercentage: oldSettings.earlyAdopterFeeCapPercentage,
           }
         : undefined,
       newState: {
         platformFeePercentage: args.platformFeePercentage,
-        minimumPlatformFee: args.minimumPlatformFee,
-        maximumPlatformFee: args.maximumPlatformFee,
+        earlyAdopterPromoStartsAt: nextPromoStartsAt,
+        earlyAdopterPromoEndsAt: nextPromoEndsAt,
+        earlyAdopterFeeCapPercentage,
       },
       metadata: {
         oldSettingsId: oldSettings?._id,
@@ -677,6 +703,7 @@ export const createCheckoutSession = action({
     // Calculate platform fee
     const { platformFee, ownerAmount } = await ctx.runMutation(api.stripe.calculatePlatformFee, {
       amount: args.amount,
+      providerExternalId: reservation.ownerId,
     })
 
     // Get or create Stripe customer (component handles this)
@@ -912,6 +939,7 @@ export const createPaymentIntent = action({
     // Calculate platform fee
     const { platformFee, ownerAmount } = await ctx.runMutation(api.stripe.calculatePlatformFee, {
       amount: args.amount,
+      providerExternalId: reservation.ownerId,
     })
 
     // Get or create Stripe customer (component handles this)
