@@ -832,7 +832,18 @@ export const createPaymentIntent = action({
     reservationId: v.id("reservations"),
     amount: v.number(),
   },
-  handler: async (ctx, args): Promise<{ paymentId: Id<"payments">; clientSecret: string }> => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    paymentId: Id<"payments">
+    clientSecret: string
+    amount: number
+    processingFee: number
+    chargeAmount: number
+    platformFee: number
+    ownerAmount: number
+  }> => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
       throwError(ErrorCode.AUTH_REQUIRED, "Not authenticated")

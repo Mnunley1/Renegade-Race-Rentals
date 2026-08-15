@@ -28,13 +28,19 @@ function dateInputFromMs(ms: number | null | undefined): string {
 
 /** Local calendar date → start of that day (local) as ms. */
 function startOfLocalDayMs(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number)
+  const [yStr, mStr, dStr] = dateStr.split("-")
+  const y = Number(yStr)
+  const m = Number(mStr)
+  const d = Number(dStr)
   return new Date(y, m - 1, d, 0, 0, 0, 0).getTime()
 }
 
 /** Local calendar date → end of that day (local) as ms. */
 function endOfLocalDayMs(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number)
+  const [yStr, mStr, dStr] = dateStr.split("-")
+  const y = Number(yStr)
+  const m = Number(mStr)
+  const d = Number(dStr)
   return new Date(y, m - 1, d, 23, 59, 59, 999).getTime()
 }
 
