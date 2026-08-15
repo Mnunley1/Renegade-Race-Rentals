@@ -6,7 +6,13 @@ import type { Id } from "./_generated/dataModel"
 import { action, internalAction, mutation, query } from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDaysBetween, parseLocalDate } from "./dateUtils"
-import { calculateAddOnsTotal, calculatePlatformFeeAmount, calculateRefundAmount, resolvePlatformFeePercentage } from "./pricing"
+import {
+  buildDestinationChargeAmounts,
+  calculateAddOnsTotal,
+  calculatePlatformFeeAmount,
+  calculateRefundAmount,
+  resolvePlatformFeePercentage,
+} from "./pricing"
 import {
   getPaymentFailedEmailTemplate,
   getPaymentSucceededEmailTemplate,
@@ -700,10 +706,18 @@ export const createCheckoutSession = action({
       )
     }
 
-    // Calculate platform fee
+    // Calculate Renegade platform fee on the listing amount; renter covers card processing.
     const { platformFee, ownerAmount } = await ctx.runMutation(api.stripe.calculatePlatformFee, {
       amount: args.amount,
       providerExternalId: reservation.ownerId,
+    })
+    const {
+      chargeAmountCents,
+      processingFeeCents,
+      applicationFeeCents,
+    } = buildDestinationChargeAmounts({
+      listingAmountCents: args.amount,
+      platformFeeCents: platformFee,
     })
 
     // Get or create Stripe customer (component handles this)
@@ -743,9 +757,25 @@ export const createCheckoutSession = action({
             },
             quantity: 1,
           },
+          ...(processingFeeCents > 0
+            ? [
+                {
+                  price_data: {
+                    currency: "usd",
+                    product_data: {
+                      name: "Card processing fee",
+                      description: "Passed through at Stripe's standard US card rate",
+                    },
+                    unit_amount: processingFeeCents,
+                  },
+                  quantity: 1,
+                },
+              ]
+            : []),
         ],
         payment_intent_data: {
-          application_fee_amount: platformFee, // Your platform fee
+          // Includes Renegade fee + processing so the provider nets ownerAmount
+          application_fee_amount: applicationFeeCents,
           transfer_data: {
             destination: owner.stripeAccountId, // Owner's Connect account
           },
@@ -756,6 +786,8 @@ export const createCheckoutSession = action({
             vehicleId: reservation.vehicleId,
             platformFee: platformFee.toString(),
             ownerAmount: ownerAmount.toString(),
+            processingFee: processingFeeCents.toString(),
+            chargeAmount: chargeAmountCents.toString(),
           },
         },
         success_url: `${webUrl}/checkout/success?reservationId=${args.reservationId}`,
@@ -779,6 +811,7 @@ export const createCheckoutSession = action({
       amount: args.amount,
       platformFee,
       ownerAmount,
+      processingFee: processingFeeCents,
       stripeCustomerId: customer.customerId,
       stripeCheckoutSessionId: checkoutSession.id,
       stripeAccountId: owner.stripeAccountId,
@@ -936,10 +969,18 @@ export const createPaymentIntent = action({
       )
     }
 
-    // Calculate platform fee
+    // Calculate Renegade platform fee on the listing amount; renter covers card processing.
     const { platformFee, ownerAmount } = await ctx.runMutation(api.stripe.calculatePlatformFee, {
       amount: args.amount,
       providerExternalId: reservation.ownerId,
+    })
+    const {
+      chargeAmountCents,
+      processingFeeCents,
+      applicationFeeCents,
+    } = buildDestinationChargeAmounts({
+      listingAmountCents: args.amount,
+      platformFeeCents: platformFee,
     })
 
     // Get or create Stripe customer (component handles this)
@@ -963,10 +1004,11 @@ export const createPaymentIntent = action({
     // Create Stripe Payment Intent with Connect
     const paymentIntent = await stripe.paymentIntents.create(
       {
-        amount: args.amount,
+        amount: chargeAmountCents,
         currency: "usd",
         customer: customer.customerId,
-        application_fee_amount: platformFee, // Your platform fee
+        // Includes Renegade fee + processing so the provider nets ownerAmount
+        application_fee_amount: applicationFeeCents,
         transfer_data: {
           destination: owner.stripeAccountId, // Owner's Connect account
         },
@@ -977,6 +1019,8 @@ export const createPaymentIntent = action({
           vehicleId: reservation.vehicleId,
           platformFee: platformFee.toString(),
           ownerAmount: ownerAmount.toString(),
+          processingFee: processingFeeCents.toString(),
+          chargeAmount: chargeAmountCents.toString(),
         },
         automatic_payment_methods: {
           enabled: true,
@@ -995,6 +1039,7 @@ export const createPaymentIntent = action({
       amount: args.amount,
       platformFee,
       ownerAmount,
+      processingFee: processingFeeCents,
       stripePaymentIntentId: paymentIntent.id,
       stripeCustomerId: customer.customerId,
       stripeAccountId: owner.stripeAccountId,
@@ -1009,6 +1054,11 @@ export const createPaymentIntent = action({
     return {
       paymentId,
       clientSecret: paymentIntent.client_secret as string,
+      amount: args.amount,
+      processingFee: processingFeeCents,
+      chargeAmount: chargeAmountCents,
+      platformFee,
+      ownerAmount,
     }
   },
 })
@@ -1025,6 +1075,7 @@ export const createPaymentRecord = mutation({
     amount: v.number(),
     platformFee: v.number(),
     ownerAmount: v.number(),
+    processingFee: v.optional(v.number()),
     stripePaymentIntentId: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripeCustomerId: v.optional(v.string()),
@@ -1044,6 +1095,7 @@ export const createPaymentRecord = mutation({
       amount: args.amount,
       platformFee: args.platformFee,
       ownerAmount: args.ownerAmount,
+      processingFee: args.processingFee,
       currency: "usd",
       status: "pending",
       stripePaymentIntentId: args.stripePaymentIntentId,

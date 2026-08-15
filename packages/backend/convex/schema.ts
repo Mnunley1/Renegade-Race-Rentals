@@ -656,9 +656,10 @@ export default defineSchema({
     reservationId: v.id("reservations"),
     renterId: v.string(),
     ownerId: v.string(),
-    amount: v.number(), // Total amount in cents
-    platformFee: v.number(), // Platform fee in cents
+    amount: v.number(), // Listing/service total in cents (before card processing)
+    platformFee: v.number(), // Renegade platform fee in cents
     ownerAmount: v.number(), // Amount owner receives in cents
+    processingFee: v.optional(v.number()), // Estimated Stripe card fee paid by renter (cents)
     currency: v.string(), // 'usd'
     status: v.union(
       v.literal("pending"),

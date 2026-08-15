@@ -73,6 +73,59 @@ export function calculatePlatformFeeAmount(
   }
 }
 
+/**
+ * US card processing estimate (Stripe's standard domestic rate).
+ * Used to gross up charges so the renter covers processing; actual Stripe
+ * fees can differ slightly (Amex, international, etc.).
+ */
+export const STRIPE_CARD_PERCENT = 0.029
+export const STRIPE_CARD_FIXED_CENTS = 30
+
+/**
+ * Charge amount such that after Stripe's card fee, `desiredNetCents` remains
+ * to split between provider and platform.
+ */
+export function grossUpForStripeCardFees(desiredNetCents: number): number {
+  if (desiredNetCents <= 0) return 0
+  return Math.ceil((desiredNetCents + STRIPE_CARD_FIXED_CENTS) / (1 - STRIPE_CARD_PERCENT))
+}
+
+/** Estimated processing fee the renter pays on top of the listing/service total. */
+export function estimateStripeCardProcessingFee(desiredNetCents: number): number {
+  if (desiredNetCents <= 0) return 0
+  return grossUpForStripeCardFees(desiredNetCents) - desiredNetCents
+}
+
+/**
+ * Destination-charge amounts where:
+ * - renter pays listing + estimated card processing
+ * - provider receives listing − Renegade platform fee
+ * - application_fee covers Renegade fee + processing (Stripe fee comes out of platform side)
+ */
+export function buildDestinationChargeAmounts(params: {
+  listingAmountCents: number
+  platformFeeCents: number
+}): {
+  chargeAmountCents: number
+  processingFeeCents: number
+  applicationFeeCents: number
+  ownerAmountCents: number
+  platformFeeCents: number
+} {
+  const { listingAmountCents, platformFeeCents } = params
+  const ownerAmountCents = listingAmountCents - platformFeeCents
+  const chargeAmountCents = grossUpForStripeCardFees(listingAmountCents)
+  const processingFeeCents = chargeAmountCents - listingAmountCents
+  const applicationFeeCents = chargeAmountCents - ownerAmountCents
+  return {
+    chargeAmountCents,
+    processingFeeCents,
+    applicationFeeCents,
+    ownerAmountCents,
+    platformFeeCents,
+  }
+}
+
 /** Check if two date ranges overlap (string comparison, YYYY-MM-DD) */
 export function datesOverlap(startA: string, endA: string, startB: string, endB: string): boolean {
   return startA <= endB && endA >= startB

@@ -7,6 +7,11 @@ import {
   isCoachingCancellationRefundable,
   isEarlyAdopterPromoActive,
   resolvePlatformFeePercentage,
+  grossUpForStripeCardFees,
+  estimateStripeCardProcessingFee,
+  buildDestinationChargeAmounts,
+  STRIPE_CARD_PERCENT,
+  STRIPE_CARD_FIXED_CENTS,
 } from "./pricing"
 
 // ============================================================================
@@ -132,6 +137,41 @@ describe("calculatePlatformFeeAmount", () => {
   it("fee + ownerAmount always equals original amount", () => {
     const result = calculatePlatformFeeAmount(9999, 7)
     expect(result.platformFee + result.ownerAmount).toBe(9999)
+  })
+})
+
+describe("grossUpForStripeCardFees / buildDestinationChargeAmounts", () => {
+  it("grosses up so net after estimated Stripe fees equals listing", () => {
+    const listing = 100_00 // $100.00
+    const charge = grossUpForStripeCardFees(listing)
+    const estimatedStripeFee = Math.round(charge * STRIPE_CARD_PERCENT) + STRIPE_CARD_FIXED_CENTS
+    // charge - stripeFee >= listing (ceil can leave a cent or two of slack)
+    expect(charge - estimatedStripeFee).toBeGreaterThanOrEqual(listing - 1)
+    expect(estimateStripeCardProcessingFee(listing)).toBe(charge - listing)
+  })
+
+  it("keeps provider at listing minus Renegade fee", () => {
+    const listing = 100_000 // $1,000
+    const platformFee = 3_000 // 3%
+    const amounts = buildDestinationChargeAmounts({
+      listingAmountCents: listing,
+      platformFeeCents: platformFee,
+    })
+    expect(amounts.ownerAmountCents).toBe(97_000)
+    expect(amounts.chargeAmountCents - amounts.applicationFeeCents).toBe(97_000)
+    expect(amounts.applicationFeeCents).toBe(platformFee + amounts.processingFeeCents)
+    expect(amounts.chargeAmountCents).toBe(listing + amounts.processingFeeCents)
+  })
+
+  it("with 0% platform fee still passes processing to the payer", () => {
+    const listing = 50_000
+    const amounts = buildDestinationChargeAmounts({
+      listingAmountCents: listing,
+      platformFeeCents: 0,
+    })
+    expect(amounts.ownerAmountCents).toBe(listing)
+    expect(amounts.applicationFeeCents).toBe(amounts.processingFeeCents)
+    expect(amounts.chargeAmountCents - amounts.applicationFeeCents).toBe(listing)
   })
 })
 
