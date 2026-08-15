@@ -17,12 +17,17 @@ import { useMutation, useQuery } from "convex/react"
 import { ArrowLeft, Loader2, Plus, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { toast } from "sonner"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
 
 type RacingType = "real-world" | "sim-racing" | "both"
+
+type ChipInputHandle = {
+  /** Commit any pending draft text and return the resulting values (sync). */
+  flush: () => string[]
+}
 
 const WHITESPACE_RE = /\s+/
 
@@ -85,41 +90,54 @@ function ChipInput({
   values,
   onChange,
   placeholder,
+  ref,
 }: {
   label: string
   values: string[]
   onChange: (next: string[]) => void
   placeholder: string
+  ref?: Ref<ChipInputHandle>
 }) {
   const [draft, setDraft] = useState("")
+  const valuesRef = useRef(values)
+  const draftRef = useRef(draft)
+  valuesRef.current = values
+  draftRef.current = draft
 
-  const add = () => {
-    const v = draft.trim()
-    if (!v) return
-    if (values.includes(v)) {
-      setDraft("")
-      return
+  const commitDraft = (raw?: string): string[] => {
+    const v = (raw ?? draftRef.current).trim()
+    let next = valuesRef.current
+    if (v && !next.includes(v)) {
+      next = [...next, v]
+      onChange(next)
+      valuesRef.current = next
     }
-    onChange([...values, v])
     setDraft("")
+    draftRef.current = ""
+    return next
   }
+
+  useImperativeHandle(ref, () => ({ flush: () => commitDraft() }))
 
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
       <div className="flex gap-2">
         <Input
+          onBlur={() => {
+            if (draftRef.current.trim()) commitDraft()
+          }}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault()
-              add()
+              commitDraft()
             }
           }}
           placeholder={placeholder}
           value={draft}
         />
-        <Button onClick={add} type="button" variant="outline">
+        <Button onClick={() => commitDraft()} type="button" variant="outline">
           <Plus className="size-4" />
         </Button>
       </div>
@@ -175,6 +193,9 @@ export default function CoachOnboardingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [nameHydrated, setNameHydrated] = useState(false)
+  const specialtiesInputRef = useRef<ChipInputHandle>(null)
+  const certificationsInputRef = useRef<ChipInputHandle>(null)
+  const tracksInputRef = useRef<ChipInputHandle>(null)
 
   useEffect(() => {
     if (!hydrated && existing) {
@@ -239,7 +260,13 @@ export default function CoachOnboardingPage() {
       return
     }
 
-    if (!(bio.trim() && location.trim() && specialties.length > 0)) {
+    // Flush chip drafts first — typing without Enter/Plus left text uncommitted, and
+    // blur+submit races left React state empty even after an onBlur commit.
+    const nextSpecialties = specialtiesInputRef.current?.flush() ?? specialties
+    const nextCertifications = certificationsInputRef.current?.flush() ?? certifications
+    const nextTracks = tracksInputRef.current?.flush() ?? tracks
+
+    if (!(bio.trim() && location.trim() && nextSpecialties.length > 0)) {
       toast.error("Bio, location, and at least one specialty are required")
       return
     }
@@ -262,9 +289,9 @@ export default function CoachOnboardingPage() {
       location,
       yearsExperience: yearsNum,
       racingType: racingTypeValue,
-      specialties,
-      certifications: certifications.length > 0 ? certifications : undefined,
-      tracksCoachedAt: tracks.length > 0 ? tracks : undefined,
+      specialties: nextSpecialties,
+      certifications: nextCertifications.length > 0 ? nextCertifications : undefined,
+      tracksCoachedAt: nextTracks.length > 0 ? nextTracks : undefined,
       hourlyRate: hourly,
       halfDayRate: halfDay,
       fullDayRate: fullDay,
@@ -405,18 +432,21 @@ export default function CoachOnboardingPage() {
               label="Specialties * (e.g. HPDE, GT3, Karting, Time Attack)"
               onChange={setSpecialties}
               placeholder="Add a specialty and press Enter"
+              ref={specialtiesInputRef}
               values={specialties}
             />
             <ChipInput
               label="Certifications"
               onChange={setCertifications}
               placeholder="e.g. SCCA Licensed Instructor"
+              ref={certificationsInputRef}
               values={certifications}
             />
             <ChipInput
               label="Tracks you coach at"
               onChange={setTracks}
               placeholder="e.g. Circuit of the Americas"
+              ref={tracksInputRef}
               values={tracks}
             />
           </CardContent>
