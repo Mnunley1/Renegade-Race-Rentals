@@ -1,13 +1,13 @@
 import { calculateDaysBetween } from "./dateUtils"
 import {
-  calculateReservationTotal,
   calculatePlatformFeeAmount,
-  datesOverlap,
   calculateRefundAmount,
+  calculateReservationTotal,
+  datesOverlap,
 } from "./pricing"
-import { calculateRefundTier } from "./stripe"
 import { calculateUserReviewStats, calculateVehicleReviewStats } from "./reviewStats"
 import { sanitizeMessage, sanitizeReview, sanitizeShortText } from "./sanitize"
+import { calculateRefundTier } from "./stripe"
 
 // ============================================================================
 // 1. Happy Path: Book → Pay → Complete → Review

@@ -1,17 +1,17 @@
 import {
+  buildDestinationChargeAmounts,
   calculateAddOnsTotal,
-  calculateReservationTotal,
   calculatePlatformFeeAmount,
-  datesOverlap,
   calculateRefundAmount,
+  calculateReservationTotal,
+  datesOverlap,
+  estimateStripeCardProcessingFee,
+  grossUpForStripeCardFees,
   isCoachingCancellationRefundable,
   isEarlyAdopterPromoActive,
   resolvePlatformFeePercentage,
-  grossUpForStripeCardFees,
-  estimateStripeCardProcessingFee,
-  buildDestinationChargeAmounts,
-  STRIPE_CARD_PERCENT,
   STRIPE_CARD_FIXED_CENTS,
+  STRIPE_CARD_PERCENT,
 } from "./pricing"
 
 // ============================================================================

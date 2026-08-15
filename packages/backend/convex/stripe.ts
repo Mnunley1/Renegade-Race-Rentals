@@ -7,19 +7,19 @@ import { action, internalAction, mutation, query } from "./_generated/server"
 import { checkAdmin } from "./admin"
 import { calculateDaysBetween, parseLocalDate } from "./dateUtils"
 import {
+  getPaymentFailedEmailTemplate,
+  getPaymentSucceededEmailTemplate,
+  sendTransactionalEmail,
+} from "./emails"
+import { ErrorCode, throwError } from "./errors"
+import { getWebUrl } from "./helpers"
+import {
   buildDestinationChargeAmounts,
   calculateAddOnsTotal,
   calculatePlatformFeeAmount,
   calculateRefundAmount,
   resolvePlatformFeePercentage,
 } from "./pricing"
-import {
-  getPaymentFailedEmailTemplate,
-  getPaymentSucceededEmailTemplate,
-  sendTransactionalEmail,
-} from "./emails"
-import { getWebUrl } from "./helpers"
-import { ErrorCode, throwError } from "./errors"
 import { rateLimiter } from "./rateLimiter"
 
 // ============================================================================
@@ -385,10 +385,7 @@ export const createConnectAccount = action({
       baseUrl.startsWith("http://")
 
     // Production allowed domains
-    const allowedProductionDomains = [
-      "https://renegaderace.com",
-      "https://www.renegaderace.com",
-    ]
+    const allowedProductionDomains = ["https://renegaderace.com", "https://www.renegaderace.com"]
 
     // If not development, validate against allowed domains
     if (!isDevelopment) {
@@ -711,14 +708,11 @@ export const createCheckoutSession = action({
       amount: args.amount,
       providerExternalId: reservation.ownerId,
     })
-    const {
-      chargeAmountCents,
-      processingFeeCents,
-      applicationFeeCents,
-    } = buildDestinationChargeAmounts({
-      listingAmountCents: args.amount,
-      platformFeeCents: platformFee,
-    })
+    const { chargeAmountCents, processingFeeCents, applicationFeeCents } =
+      buildDestinationChargeAmounts({
+        listingAmountCents: args.amount,
+        platformFeeCents: platformFee,
+      })
 
     // Get or create Stripe customer (component handles this)
     const customer = await stripeClient.getOrCreateCustomer(ctx, {
@@ -974,14 +968,11 @@ export const createPaymentIntent = action({
       amount: args.amount,
       providerExternalId: reservation.ownerId,
     })
-    const {
-      chargeAmountCents,
-      processingFeeCents,
-      applicationFeeCents,
-    } = buildDestinationChargeAmounts({
-      listingAmountCents: args.amount,
-      platformFeeCents: platformFee,
-    })
+    const { chargeAmountCents, processingFeeCents, applicationFeeCents } =
+      buildDestinationChargeAmounts({
+        listingAmountCents: args.amount,
+        platformFeeCents: platformFee,
+      })
 
     // Get or create Stripe customer (component handles this)
     const customer = await stripeClient.getOrCreateCustomer(ctx, {
