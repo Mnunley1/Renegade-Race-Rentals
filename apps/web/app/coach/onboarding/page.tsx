@@ -30,6 +30,8 @@ type ChipInputHandle = {
 }
 
 const WHITESPACE_RE = /\s+/
+/** Matches Clerk/Convex placeholder names like "null null" from `${null} ${null}`. */
+const NULLISH_NAME_RE = /^(null|undefined)(\s+(null|undefined))+$/i
 
 function dollarsToCents(value: string): number | undefined {
   const trimmed = value.trim()
@@ -71,18 +73,95 @@ function optionalSocialLinks(instagram: string, website: string) {
   }
 }
 
+function isUsableDisplayName(name: string | null | undefined): name is string {
+  const trimmed = name?.trim() ?? ""
+  if (!trimmed) return false
+  const lower = trimmed.toLowerCase()
+  if (lower === "unknown user" || lower === "unknown coach") return false
+  if (lower === "null" || lower === "undefined") return false
+  if (NULLISH_NAME_RE.test(trimmed)) return false
+  return true
+}
+
 function resolveInitialDisplayName(
   convexName: string | undefined,
   clerkFullName: string | null | undefined,
   clerkFirstName: string | null | undefined,
   clerkLastName: string | null | undefined
 ) {
-  const rawConvex = convexName?.trim() ?? ""
-  const fromConvex =
-    rawConvex && rawConvex !== "Unknown User" && rawConvex !== "Unknown Coach" ? rawConvex : ""
-  const fromClerk =
-    clerkFullName?.trim() || [clerkFirstName, clerkLastName].filter(Boolean).join(" ").trim() || ""
-  return fromConvex || fromClerk
+  if (isUsableDisplayName(convexName)) return convexName.trim()
+  if (isUsableDisplayName(clerkFullName)) return clerkFullName.trim()
+  return [clerkFirstName, clerkLastName].filter(isUsableDisplayName).join(" ").trim()
+}
+
+type CoachProfileFormFields = {
+  headline: string | undefined
+  bio: string
+  location: string
+  yearsExperience: number | undefined
+  racingType: RacingType | undefined
+  specialties: string[]
+  certifications: string[] | undefined
+  tracksCoachedAt: string[] | undefined
+  hourlyRate: number | undefined
+  halfDayRate: number | undefined
+  fullDayRate: number | undefined
+  contactInfo: ReturnType<typeof optionalContactInfo>
+  socialLinks: ReturnType<typeof optionalSocialLinks>
+}
+
+function buildCoachProfileFields(input: {
+  displayName: string
+  headline: string
+  bio: string
+  location: string
+  yearsExperience: string
+  racingType: RacingType | "unset"
+  specialties: string[]
+  certifications: string[]
+  tracks: string[]
+  hourlyRate: string
+  halfDayRate: string
+  fullDayRate: string
+  contactEmail: string
+  contactPhone: string
+  instagram: string
+  website: string
+}): { error: string } | { name: string; fields: CoachProfileFormFields } {
+  const name = input.displayName.trim()
+  if (!(name && isUsableDisplayName(name))) {
+    return { error: "Your name is required" }
+  }
+  if (!(input.bio.trim() && input.location.trim() && input.specialties.length > 0)) {
+    return { error: "Bio, location, and at least one specialty are required" }
+  }
+  const hourly = dollarsToCents(input.hourlyRate)
+  const halfDay = dollarsToCents(input.halfDayRate)
+  const fullDay = dollarsToCents(input.fullDayRate)
+  if (!(hourly || halfDay || fullDay)) {
+    return { error: "Set at least one rate (hourly, half-day, or full-day)" }
+  }
+  const yearsNum = input.yearsExperience.trim()
+    ? Number.parseInt(input.yearsExperience, 10)
+    : undefined
+  return {
+    name,
+    fields: {
+      headline: input.headline.trim() || undefined,
+      bio: input.bio,
+      location: input.location,
+      yearsExperience: yearsNum,
+      racingType: input.racingType === "unset" ? undefined : input.racingType,
+      specialties: input.specialties,
+      certifications: input.certifications.length > 0 ? input.certifications : undefined,
+      tracksCoachedAt: input.tracks.length > 0 ? input.tracks : undefined,
+      hourlyRate: hourly,
+      halfDayRate: halfDay,
+      fullDayRate: fullDay,
+      contactInfo: optionalContactInfo(input.contactEmail, input.contactPhone),
+      socialLinks: optionalSocialLinks(input.instagram, input.website),
+    },
+  }
 }
 
 function ChipInput({
@@ -254,65 +333,49 @@ export default function CoachOnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const trimmedName = displayName.trim()
-    if (!trimmedName) {
-      toast.error("Your name is required")
-      return
-    }
-
     // Flush chip drafts first — typing without Enter/Plus left text uncommitted, and
     // blur+submit races left React state empty even after an onBlur commit.
     const nextSpecialties = specialtiesInputRef.current?.flush() ?? specialties
     const nextCertifications = certificationsInputRef.current?.flush() ?? certifications
     const nextTracks = tracksInputRef.current?.flush() ?? tracks
 
-    if (!(bio.trim() && location.trim() && nextSpecialties.length > 0)) {
-      toast.error("Bio, location, and at least one specialty are required")
-      return
-    }
-
-    const hourly = dollarsToCents(hourlyRate)
-    const halfDay = dollarsToCents(halfDayRate)
-    const fullDay = dollarsToCents(fullDayRate)
-    if (!(hourly || halfDay || fullDay)) {
-      toast.error("Set at least one rate (hourly, half-day, or full-day)")
-      return
-    }
-
-    const contactInfo = optionalContactInfo(contactEmail, contactPhone)
-    const socialLinks = optionalSocialLinks(instagram, website)
-    const yearsNum = yearsExperience.trim() ? Number.parseInt(yearsExperience, 10) : undefined
-    const racingTypeValue = racingType === "unset" ? undefined : racingType
-    const profileFields = {
-      headline: headline.trim() || undefined,
+    const built = buildCoachProfileFields({
+      displayName,
+      headline,
       bio,
       location,
-      yearsExperience: yearsNum,
-      racingType: racingTypeValue,
+      yearsExperience,
+      racingType,
       specialties: nextSpecialties,
-      certifications: nextCertifications.length > 0 ? nextCertifications : undefined,
-      tracksCoachedAt: nextTracks.length > 0 ? nextTracks : undefined,
-      hourlyRate: hourly,
-      halfDayRate: halfDay,
-      fullDayRate: fullDay,
-      contactInfo,
-      socialLinks,
+      certifications: nextCertifications,
+      tracks: nextTracks,
+      hourlyRate,
+      halfDayRate,
+      fullDayRate,
+      contactEmail,
+      contactPhone,
+      instagram,
+      website,
+    })
+    if ("error" in built) {
+      toast.error(built.error)
+      return
     }
 
     setSubmitting(true)
     try {
       // Coach directory names come from users.name — keep Clerk + Convex in sync.
-      const { firstName, lastName } = splitDisplayName(trimmedName)
+      const { firstName, lastName } = splitDisplayName(built.name)
       if (clerkUser) {
         await clerkUser.update({ firstName, lastName })
       }
-      await updateUserProfile({ name: trimmedName })
+      await updateUserProfile({ name: built.name })
 
       if (isEdit) {
-        await updateProfile({ profileId: existing._id, ...profileFields })
+        await updateProfile({ profileId: existing._id, ...built.fields })
         toast.success("Coach profile updated")
       } else {
-        await createProfile(profileFields)
+        await createProfile(built.fields)
         toast.success("Coach profile created")
       }
       router.push("/coach/dashboard")
