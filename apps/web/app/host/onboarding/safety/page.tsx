@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import type { Id } from "@/lib/convex"
 import { api } from "@/lib/convex"
 import { handleErrorWithContext } from "@/lib/error-handler"
+import { areVehiclePhotosRequired } from "@/lib/feature-flags"
 
 export default function SafetyPage() {
   const router = useRouter()
@@ -46,7 +47,7 @@ export default function SafetyPage() {
       images = draft.images
     }
 
-    if (images.length === 0) {
+    if (areVehiclePhotosRequired() && images.length === 0) {
       toast.error("Please upload at least one photo")
       router.push("/host/onboarding/photos")
       return
