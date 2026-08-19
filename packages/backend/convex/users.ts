@@ -10,7 +10,7 @@ import {
   query,
 } from "./_generated/server"
 import { getWelcomeEmailTemplate, sendTransactionalEmail } from "./emails"
-import { r2 } from "./r2"
+import { imagePresets, r2 } from "./r2"
 
 /** Matches Clerk/Convex placeholder names like "null null" from `${null} ${null}`. */
 const NULLISH_NAME_RE = /^(null|undefined)(\s+(null|undefined))+$/i
@@ -23,6 +23,43 @@ export const current = query({
 export const getByExternalId = query({
   args: { externalId: v.string() },
   handler: async (ctx, args) => await userByExternalId(ctx, args.externalId),
+})
+
+export const searchForInvoiceRecipients = query({
+  args: {
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return []
+    }
+
+    const search = (args.search || "").trim().toLowerCase()
+    const limit = Math.min(args.limit || 25, 50)
+    const users = await ctx.db.query("users").take(200)
+
+    return users
+      .filter((user) => user.externalId !== identity.subject)
+      .filter((user) => {
+        if (!search) return true
+        return (
+          user.name.toLowerCase().includes(search) ||
+          user.email?.toLowerCase().includes(search) ||
+          user.externalId.toLowerCase().includes(search)
+        )
+      })
+      .slice(0, limit)
+      .map((user) => ({
+        externalId: user.externalId,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImageR2Key
+          ? imagePresets.avatar(user.profileImageR2Key)
+          : undefined,
+      }))
+  },
 })
 
 // Get user by Convex document ID (for public profile pages)
